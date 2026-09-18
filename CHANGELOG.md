@@ -7,6 +7,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.0] — 2026-09-18
+
+**No runtime change.** The server behaves exactly as `0.0.1` did: same tools, same arguments, same
+results. Only where the source lives, and how the package is built, have changed.
+
+### Changed
+
+- The source moved to its own repository,
+  [SubscriptionTech/ProAbono.Mcp.Installation](https://github.com/SubscriptionTech/ProAbono.Mcp.Installation),
+  and `package.json` and `server.json` now point at it. `0.0.1` still names the repository it was
+  published from: a published version's metadata is frozen, on npm and in the MCP Registry alike.
+  That repository survives, and its README points here.
+- This version is published from GitHub Actions with
+  [npm provenance](https://docs.npmjs.com/generating-provenance-statements), so the npm page names
+  the build that produced the tarball. `0.0.1` was published by hand and carries no attestation.
+
+### Added
+
+- A test holding `package.json` and `server.json` to the same repository. Neither field is derived
+  from the other, and both freeze at publication.
+
 ## [0.0.1] — 2026-09-18
 
 First release.
@@ -24,5 +45,6 @@ First release.
 - **Server introspection**: `get_server_info`, reporting the version and which environment variables
   are configured, never their values.
 
-[Unreleased]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.0.1...HEAD
+[Unreleased]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/releases/tag/v0.0.1

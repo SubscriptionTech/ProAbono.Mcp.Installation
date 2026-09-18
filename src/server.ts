@@ -22,7 +22,7 @@ export const SERVER_NAME = "proabono-mcp-installation";
  * bug report. It must equal `version` in `package.json` and both versions in `server.json`, or the
  * server names a release that does not exist on npm; `tests/release.test.ts` fails when it drifts.
  */
-export const SERVER_VERSION = "0.0.1";
+export const SERVER_VERSION = "0.1.0";
 
 export function createServer(
   configuration: ProAbonoConfiguration,
