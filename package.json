@@ -16,10 +16,11 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/vendor-resources.mjs",
+    "refresh:contract": "node scripts/refresh-contract.mjs",
+    "build": "npm run refresh:contract && tsc -p tsconfig.json && node scripts/vendor-resources.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "start": "node dist/index.js",
-    "test": "tsc -p tsconfig.test.json && node scripts/vendor-resources.mjs build-test/src/resources && node scripts/run-tests.mjs",
+    "test": "npm run refresh:contract && tsc -p tsconfig.test.json && node scripts/vendor-resources.mjs build-test/src/resources && node scripts/run-tests.mjs",
     "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {

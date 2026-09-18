@@ -37,9 +37,14 @@ If the two disagree, or if what you need is in neither, open an issue rather tha
 ## Refreshing the API contract
 
 `resources/open-api/pa-live-openapi-3.0.3.yaml` is a **copy**. It is authored in the private
-`SubscriptionTech/Claude.SharedApi.ProAbonoLive` repository and refreshed here by hand — an edit
-made directly in this repository is lost at the next refresh. The procedure, and what the copy
-deliberately leaves behind, are in [resources/open-api/index.md](resources/open-api/index.md).
+`SubscriptionTech/Claude.SharedApi.ProAbonoLive` repository, which is the source of truth — an edit
+made directly here is overwritten by the next refresh.
+
+`npm run build` and `npm test` refresh the copy automatically when that upstream is reachable. It
+will not be reachable for you: it is private, and reaching it needs the maintainer's workspace. The
+script says so and the committed copy is used instead, which is why it is committed — you need no
+credential to build. The details, and what the copy deliberately leaves behind, are in
+[resources/open-api/index.md](resources/open-api/index.md).
 
 ## The specifications are private
 

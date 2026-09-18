@@ -17,8 +17,10 @@ writing code, and never infer ProAbono behaviour from memory, from the web, or f
 
 1. `resources/open-api/` — the ProAbono API Live contract (`pa-live-openapi-3.0.3.yaml`).
    Authoritative for endpoints, parameters, payloads, response shapes and authentication. It is a
-   copy of the contract maintained in the private `Claude.SharedApi.ProAbonoLive` repository,
-   refreshed by hand and never edited here — see [resources/open-api/index.md](resources/open-api/index.md).
+   copy of the contract maintained in the private `Claude.SharedApi.ProAbonoLive` repository, which
+   is the source of truth. `npm run build` and `npm test` refresh the copy from there when that
+   repository is reachable, and use the committed copy when it is not, saying which on every run.
+   Never edit it here — see [resources/open-api/index.md](resources/open-api/index.md).
 2. `resources/docs/` — the ProAbono installation documentation. Authoritative for the installation
    procedure, the integration workflows and the guidance the MCP exposes to developers.
 

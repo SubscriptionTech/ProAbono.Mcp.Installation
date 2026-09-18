@@ -6,10 +6,14 @@
  * They are copied into `dist/resources/` at build time instead: the YAML contract as JSON, so the
  * runtime needs no YAML parser, and the docs verbatim.
  *
- * Both sources live in this repository. The contract is a copy of the one maintained in
- * `SubscriptionTech/Claude.SharedApi.ProAbonoLive`, refreshed by hand -- see
- * `resources/open-api/index.md`. Nothing in the build reaches outside this repository, so a clone
- * builds anywhere, with no credential.
+ * Both sources are committed in this repository, so a clone builds anywhere, with no credential.
+ *
+ * The contract is a copy of the one maintained in `SubscriptionTech/Claude.SharedApi.ProAbonoLive`.
+ * `scripts/refresh-contract.mjs` runs before this script and refreshes that copy when the upstream
+ * is reachable -- it is attached to the workspace repository as `shared/ProAbonoLive`, one level
+ * above this root. When it is not reachable, which is the case in CI and in any standalone clone,
+ * the committed copy is used and the refresh says so rather than passing silently. See
+ * `resources/open-api/index.md`.
  */
 import { readFileSync, writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
