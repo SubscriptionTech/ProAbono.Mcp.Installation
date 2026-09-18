@@ -1,0 +1,58 @@
+name: Bug report
+description: A tool returns the wrong thing, fails, or the server refuses to start.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Never paste a credential. `get_server_info` reports which variables are configured and never
+        their values — its output is what we need, not your environment.
+
+        A vulnerability does not belong here: see [SECURITY.md](https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/blob/main/SECURITY.md).
+
+  - type: input
+    id: version
+    attributes:
+      label: Server version
+      description: The `version` reported by `get_server_info`.
+      placeholder: "0.0.1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: client
+    attributes:
+      label: MCP client
+      options:
+        - Claude Code
+        - VS Code
+        - Cursor
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version and operating system
+      description: The output of `node --version`, and which OS.
+      placeholder: "v22.11.0, Windows 11"
+    validations:
+      required: true
+
+  - type: input
+    id: tool
+    attributes:
+      label: Tool involved
+      description: Which tool the client called, if the problem is in one.
+      placeholder: install_customer_portal
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: What you did, what you expected, what happened
+      description: >
+        The call and its arguments, the result you expected, and the result you got — with the error
+        message verbatim if there is one. An offer or customer reference is fine; a key is not.
+    validations:
+      required: true

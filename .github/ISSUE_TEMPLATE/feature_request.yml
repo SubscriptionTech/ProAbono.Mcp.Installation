@@ -1,0 +1,37 @@
+name: Feature request
+description: A tool, an option or an installation step this server does not cover yet.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Some things are out of scope by design: widget and plug-in installations (WordPress and
+        similar), and any destructive operation — anonymization, invalidation, suspension and
+        link revocation are deliberately not exposed, in any account.
+
+        The roadmap is decided from a private specification, so an accepted request may sit for a
+        while before it is built.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you are trying to install, and what stops you
+      description: The integration step you are on, and where the server leaves you without an answer.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What the server would have to do
+      description: >
+        The tool you would call, its arguments and what it should return — or the guidance it should
+        give. Name the ProAbono endpoint if you know it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: What you do instead today
+      description: The manual steps this would replace.

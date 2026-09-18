@@ -1,0 +1,9 @@
+# One line ending in the repository, whatever the contributor's platform writes locally.
+# Without it, a Windows checkout re-commits the YAML workflows and the TypeScript sources with
+# CRLF, and every diff becomes whole-file.
+* text=auto eol=lf
+
+# Binary-ish sources git must never touch.
+*.png binary
+*.jpg binary
+*.ico binary

@@ -1,0 +1,29 @@
+# Keeps the two dependency surfaces of this repository current: the npm tree the package is built
+# from, and the actions the CI and release workflows pin.
+#
+# The release workflow publishes with provenance, so an action bumped here changes what the
+# attestation names -- review the bump, do not merge it blind.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      # A single pull request for the build chain: these move together and are checked by the
+      # same `npm run typecheck && npm run build && npm test`.
+      dev-dependencies:
+        dependency-type: development
+    commit-message:
+      prefix: "chore"
+      include: scope
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "ci"
