@@ -56,7 +56,8 @@ reconcile the two.
   three commands on the three Node versions.
 - Do not bump the version. The release identity lives in four places that `tests/release.test.ts`
   forces to agree — `package.json`, `server.json` twice and `SERVER_VERSION` in `src/server.ts` —
-  and it is bumped as part of a release, not as part of a change.
+  and it is bumped as part of a release, not as part of a change. Releasing is a maintainer
+  procedure, described in [RELEASING.md](RELEASING.md).
 - No credential, no account identifier and no key ever appears in a source file, a test fixture or
   an example. Reference the environment variable by name.
 

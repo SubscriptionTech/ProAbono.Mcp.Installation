@@ -47,6 +47,10 @@ Pushing a `v*` tag *is* the release: `.github/workflows/release.yml` builds, tes
 npm with provenance. A published version number is spent and cannot be reused. The MCP Registry
 publication stays manual, under DNS authentication, and must run **after** npm.
 
+The whole procedure — what to bump, what the workflow does, how to authenticate to the registry, and
+how to verify the result — is in [RELEASING.md](RELEASING.md). Read it before running a release
+rather than reconstructing it from here.
+
 ## Language
 
 All generated Markdown files must be written in English, regardless of the language used in user
