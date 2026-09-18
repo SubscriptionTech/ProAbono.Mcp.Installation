@@ -10,18 +10,24 @@ that what can fail, fails *before* npm accepts a tarball.
 ## What you need
 
 - **Write access to this repository**, to push a tag.
-- **The `NPM_TOKEN` secret**, already set on the repository: a granular npm token scoped to
-  `@proabono/mcp-installation` with read and write permission. It has an expiry date — when it lapses
-  the release fails at the publish step, before any upload. The package's npm publishing setting must
-  allow automation tokens; the setting that requires two-factor authentication on *every* publish
-  refuses a token-driven CI publish outright.
+- **Nothing else for npm.** Publishing uses **trusted publishing**: npmjs.com holds a trusted
+  publisher for `@proabono/mcp-installation` naming this repository and the workflow file
+  `release.yml`, and the npm CLI authenticates from the OIDC token that GitHub Actions mints. There
+  is no npm token to hold, rotate or expire.
 - **`mcp-publisher`** on your machine, and the Ed25519 signing key for the `com.proabono` namespace.
   The key never goes into a repository secret — the registry publish is deliberately manual and
   local.
 
-Provenance does **not** come from the npm token. It comes from the `id-token: write` permission in
-`.github/workflows/release.yml`. Removing that permission silently costs the attestation while the
-publish still succeeds.
+Both the publish credential **and** the provenance attestation come from the `id-token: write`
+permission in `.github/workflows/release.yml`. Remove it and the release has no credential at all.
+
+Two things break trusted publishing silently, so check them before blaming anything else:
+
+- **Renaming the workflow file.** The trusted publisher on npmjs.com names `release.yml` explicitly.
+  Rename it here without renaming it there and the publish is rejected as an untrusted caller.
+- **Lowering `node-version`.** Trusted publishing requires npm 11.5.1 or later and Node 22.14.0 or
+  later. `release.yml` pins `24.x`. The `release path` job in `ci.yml` asserts the npm floor on every
+  push, so this one is caught before a release rather than during it.
 
 ## 1. Bump the version
 
@@ -65,10 +71,10 @@ Watch it:
 gh run watch "$(gh run list --workflow Release --limit 1 --json databaseId --jq '.[0].databaseId')" --exit-status
 ```
 
-**If it fails before the publish step** — a bad token, a wrong scope, a blocked publishing setting —
-nothing was uploaded and the version is intact. Fix the cause and use **Re-run failed jobs** on the
-same run. Never re-tag: a second tag for the same version cannot help, and if npm *did* accept the
-tarball the number is already gone.
+**If it fails at or before the publish step** — a trusted publisher naming a different workflow file,
+a missing `id-token: write`, a failing test — nothing was uploaded and the version is intact. Fix the
+cause and use **Re-run failed jobs** on the same run. Never re-tag: a second tag for the same version
+cannot help, and if npm *did* accept the tarball the number is already gone.
 
 **If `gh release create` fails after a successful publish**, npm is published and only the GitHub
 release object is missing. Create it by hand; that is not worth a new version.
@@ -150,6 +156,6 @@ repository and does not follow it on its own.
 
 ## Where the secrets live
 
-Nothing in this repository records a key, a token or a path to one. The npm token, its expiry date
-and the location of the registry signing key belong in the maintainer's password manager, not in a
-public repository.
+Nothing in this repository records a key, a token or a path to one, and npm publishing now needs no
+secret at all. What remains is the Ed25519 key for the MCP Registry: its location, and any passphrase
+it carries, belong in the maintainer's password manager, not in a public repository.

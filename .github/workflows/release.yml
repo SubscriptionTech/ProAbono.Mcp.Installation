@@ -2,14 +2,23 @@
 # nothing else starts a release.
 #
 # Two permissions, two distinct jobs:
-#   - `id-token: write` is what produces the provenance attestation. Without it the publish still
-#     succeeds and the Provenance panel simply never appears on npmjs.com.
+#   - `id-token: write` mints the OIDC token. It is what authenticates the publish AND what produces
+#     the provenance attestation. Remove it and the release has no credential at all.
 #   - `contents: write` is what lets the last step create the GitHub release object. A tag travels
 #     with a clone; a release does not.
 #
-# Authentication is a granular npm automation token, scoped to this package, held as the NPM_TOKEN
-# secret. Provenance does not come from it -- it comes from `id-token: write` above -- so rotating
-# the token never costs the attestation.
+# Authentication is npm **trusted publishing**: npmjs.com holds a trusted publisher for this package
+# naming this repository and this workflow file by name, and the npm CLI detects the OIDC environment
+# and authenticates from it. There is no token and no NODE_AUTH_TOKEN anywhere below -- setting one
+# is not needed. If the workflow is ever renamed, the trusted publisher on npmjs.com must be renamed
+# with it, or the publish is rejected as an untrusted caller.
+#
+# It replaced a granular npm token in the NPM_TOKEN secret. npm is restricting 2FA-bypass tokens:
+# since 2026-07-31 they cannot change package settings, and from January 2027 they lose direct
+# publish. See https://gh.io/npm-gat-bypass2fa-deprecation.
+#
+# Trusted publishing needs npm >= 11.5.1 and Node >= 22.14.0, which `node-version: 24.x` satisfies.
+# Caching is disabled below because npm's trusted-publishing documentation specifies it.
 #
 # A published version number is spent: npm refuses to republish it, even after an unpublish. The
 # version guard below runs before anything is uploaded, so a tag that disagrees with package.json
@@ -37,8 +46,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24.x
-          cache: npm
           registry-url: https://registry.npmjs.org
+          package-manager-cache: false
 
       - name: Check the tag matches the declared version
         run: |
@@ -49,14 +58,6 @@ jobs:
             exit 1
           fi
 
-      # Fails in seconds on a token that has expired, been revoked or been scoped too narrowly,
-      # instead of after the full build. `npm publish --dry-run` would not catch any of those: it
-      # never contacts the registry to authenticate.
-      - name: Check the npm token authenticates
-        run: npm whoami
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
@@ -64,10 +65,12 @@ jobs:
 
       # `prepublishOnly` rebuilds and re-tests; the steps above are what names the failing stage
       # when something breaks.
+      #
+      # `--provenance` is redundant under trusted publishing -- npm attests automatically -- and is
+      # kept explicit so the attestation does not silently disappear if the trusted publisher is
+      # ever removed.
       - name: Publish to npm, with provenance
         run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Create the GitHub release
         run: gh release create "${GITHUB_REF_NAME}" --verify-tag --generate-notes --title "${GITHUB_REF_NAME}"
