@@ -16,6 +16,14 @@ updates:
       # same `npm run typecheck && npm run build && npm test`.
       dev-dependencies:
         dependency-type: development
+    ignore:
+      # A TypeScript major does not belong in an automated group bump. 5.9 -> 7.0 (the typescript-go
+      # rewrite) stops resolving @types/node under this tsconfig.json and the typecheck collapses on
+      # every Node version -- which held the useful @types/node bump hostage in the same pull request.
+      # Minors and patches still flow; a major is a migration, taken deliberately.
+      - dependency-name: typescript
+        update-types:
+          - version-update:semver-major
     commit-message:
       prefix: "chore"
       include: scope
