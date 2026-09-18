@@ -1,8 +1,7 @@
 # Install, build, type-check and test on every push and pull request.
 #
-# A red build blocks a release (publication plan, Phase C). The live lane of the test suite is
-# skipped here: it needs the fixture account's credentials, which are not available to a pull
-# request from a fork.
+# A red build blocks a release -- see RELEASING.md. The live lane of the test suite is skipped here:
+# it needs the fixture account's credentials, which are not available to a pull request from a fork.
 #
 # The job needs no credential of its own. Both sources the build vendors -- the API Live contract
 # and the documentation corpus -- are committed under resources/, so a fork's pull request builds like
@@ -39,3 +38,44 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
+
+  # `release.yml` configures setup-node with `registry-url`, which is what writes the .npmrc that
+  # NODE_AUTH_TOKEN feeds at publish time. The build job above passes no registry-url, so nothing
+  # else in CI exercises that half of the action -- and the release workflow only ever runs on a
+  # `v*` tag. Without this job, an action upgrade that broke the publish authentication would stay
+  # invisible until the next release.
+  #
+  # It needs no credential: with NODE_AUTH_TOKEN unset, setup-node still writes the file, carrying
+  # the placeholder rather than a value.
+  release-path:
+    name: release path
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: false
+          lfs: false
+
+      - uses: actions/setup-node@v7
+        with:
+          # The version release.yml publishes from.
+          node-version: 24.x
+          registry-url: https://registry.npmjs.org
+
+      - name: Check setup-node wrote the publish .npmrc
+        run: |
+          userconfig="$(npm config get userconfig)"
+          if [ ! -f "$userconfig" ]; then
+            echo "::error::setup-node wrote no user .npmrc at ${userconfig}"
+            exit 1
+          fi
+          if ! grep -q '_authToken' "$userconfig"; then
+            echo "::error::${userconfig} carries no _authToken line, so NODE_AUTH_TOKEN would be ignored at publish time"
+            exit 1
+          fi
+          registry="$(npm config get registry)"
+          case "$registry" in
+            https://registry.npmjs.org*) ;;
+            *) echo "::error::registry resolves to ${registry}, expected https://registry.npmjs.org"; exit 1 ;;
+          esac

@@ -49,6 +49,14 @@ jobs:
             exit 1
           fi
 
+      # Fails in seconds on a token that has expired, been revoked or been scoped too narrowly,
+      # instead of after the full build. `npm publish --dry-run` would not catch any of those: it
+      # never contacts the registry to authenticate.
+      - name: Check the npm token authenticates
+        run: npm whoami
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
       - run: npm ci
       - run: npm run typecheck
       - run: npm run build
