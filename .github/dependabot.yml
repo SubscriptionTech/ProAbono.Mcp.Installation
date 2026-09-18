@@ -24,6 +24,13 @@ updates:
       - dependency-name: typescript
         update-types:
           - version-update:semver-major
+      # @types/node is pinned to the floor `engines` declares, not to the newest runtime. Types for a
+      # newer Node describe APIs that do not exist on Node 20 -- `fs/promises` `glob`, for one -- and
+      # the typechecker would wave them through. A major here moves only when the supported floor
+      # does, which is a decision about `engines` and the CI matrix, not a dependency bump.
+      - dependency-name: "@types/node"
+        update-types:
+          - version-update:semver-major
     commit-message:
       prefix: "chore"
       include: scope
