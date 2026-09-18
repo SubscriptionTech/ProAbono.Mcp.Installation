@@ -7,6 +7,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- The API is named **"API Live"** throughout, never "Live API" — ProAbono's own naming rule. This is
+  user-visible in three places: the `get_api_reference` tool's title and description, which an MCP
+  client displays, and the documentation corpus that `search_documentation` returns. No tool was
+  renamed and no behaviour changed.
+- The vendored API Live contract is now refreshed automatically from its source of truth before
+  every build and every test run, when that source is reachable. It is not reachable in CI or in a
+  clone of this repository on its own, and there the committed copy is used — the build says which
+  of the two happened on every run. Nothing about building this repository changed.
+
 ## [0.1.0] — 2026-09-18
 
 **No runtime change.** The server behaves exactly as `0.0.1` did: same tools, same arguments, same

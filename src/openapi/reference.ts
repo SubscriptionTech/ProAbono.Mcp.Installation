@@ -1,5 +1,5 @@
 /**
- * Endpoint and schema lookup over the ProAbono Live API contract.
+ * Endpoint and schema lookup over the ProAbono API Live contract.
  *
  * Everything returned here comes from the vendored contract. Nothing is remembered, inferred or
  * completed from elsewhere: if the contract does not say it, this module does not answer it.

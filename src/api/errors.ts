@@ -1,4 +1,4 @@
-/** Errors raised by the ProAbono Live API, carried with the code the API returned. */
+/** Errors raised by the ProAbono API Live, carried with the code the API returned. */
 export class ProAbonoApiError extends Error {
   readonly status: number;
   readonly code: string | undefined;

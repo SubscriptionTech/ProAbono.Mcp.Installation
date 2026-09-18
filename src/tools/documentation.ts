@@ -2,7 +2,7 @@
  * Documentation and reference tools.
  *
  * Both answer strictly from the two sources of truth vendored into the build: the installation
- * documentation and the ProAbono Live API contract.
+ * documentation and the ProAbono API Live contract.
  */
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -53,9 +53,9 @@ export function registerDocumentationTools(server: McpServer): void {
   server.registerTool(
     "get_api_reference",
     {
-      title: "Look up a ProAbono Live API endpoint or object",
+      title: "Look up a ProAbono API Live endpoint or object",
       description:
-        "Returns the exact contract of a ProAbono Live API endpoint (parameters, whether each is " +
+        "Returns the exact contract of a ProAbono API Live endpoint (parameters, whether each is " +
         "required, request body schema, responses) or of a named object such as Customer, " +
         "Subscription, Offer, Feature or Usage. Use it before calling or generating a call to the " +
         "ProAbono API, so parameter names and shapes come from the contract rather than from memory.",

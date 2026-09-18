@@ -2,7 +2,7 @@
 
 A local [MCP](https://modelcontextprotocol.io) server that installs ProAbono into your site, from your IDE.
 
-It gives your coding assistant the ProAbono documentation, the Live API and *your own* ProAbono configuration, so it can answer API questions, generate integration code already filled in with your real business identifier and segment, read your account back to check the result, and create test data.
+It gives your coding assistant the ProAbono documentation, the API Live and *your own* ProAbono configuration, so it can answer API questions, generate integration code already filled in with your real business identifier and segment, read your account back to check the result, and create test data.
 
 It runs locally, over stdio, against whatever account your key opens. It has no environment concept of its own: your credentials are the only boundary.
 

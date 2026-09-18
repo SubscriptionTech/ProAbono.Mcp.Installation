@@ -37,7 +37,7 @@ const resourcesDirectory = join(dirname(fileURLToPath(import.meta.url)), "..", "
 let contract: OpenApiDocument | undefined;
 let documentation: readonly DocumentationFile[] | undefined;
 
-/** The ProAbono Live API contract. Authoritative for endpoints, parameters and payloads. */
+/** The ProAbono API Live contract. Authoritative for endpoints, parameters and payloads. */
 export function loadContract(): OpenApiDocument {
   if (contract === undefined) {
     contract = JSON.parse(readFileSync(join(resourcesDirectory, "openapi.json"), "utf8")) as OpenApiDocument;

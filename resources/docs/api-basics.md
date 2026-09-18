@@ -11,7 +11,7 @@ when_to_use: Before writing any server-side ProAbono call, or when a call return
 | API | Purpose |
 | --- | --- |
 | **API Live** | Everything needed for a normal integration: customers, subscriptions, usages, pricing, invoices. Start here — it is deliberately small. |
-| **API BackOffice** | Administrative and less common operations. Only reach for it when the Live API has no equivalent. |
+| **API BackOffice** | Administrative and less common operations. Only reach for it when the API Live has no equivalent. |
 
 Unless a task explicitly says otherwise, you want the **API Live**.
 
@@ -125,7 +125,7 @@ data you already have, in both directions.
 
 ## `Links` and the `query` mechanism
 
-Most Live API responses carry a `Links` array. This is how the server side hands work to the
+Most API Live responses carry a `Links` array. This is how the server side hands work to the
 browser side without exposing anything sensitive:
 
 ```json

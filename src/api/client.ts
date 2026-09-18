@@ -1,5 +1,5 @@
 /**
- * The ProAbono Live API client.
+ * The ProAbono API Live client.
  *
  * Three behaviours here are load-bearing for everything the server does, and each is asserted
  * by the test suite rather than left to the caller:

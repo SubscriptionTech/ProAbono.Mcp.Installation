@@ -207,7 +207,7 @@ existing customer onto a custom subscription your sales team just created.
 
 Opening parameters are encrypted server-side into a **query**, so nothing sensitive is exposed and
 nothing can be tampered with client-side. Queries appear in the `Links` array of objects returned by
-the Live API — and **only when the object's state and your request parameters make that workflow
+the API Live — and **only when the object's state and your request parameters make that workflow
 applicable**.
 
 ```http
