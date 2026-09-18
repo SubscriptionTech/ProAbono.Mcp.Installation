@@ -5,9 +5,9 @@
   "version": "0.0.1",
   "websiteUrl": "https://www.proabono.com",
   "repository": {
-    "url": "https://github.com/SubscriptionTech/Claude.Publiable.McpInstallation",
+    "url": "https://github.com/SubscriptionTech/ProAbono.Mcp.Installation",
     "source": "github",
-    "id": "1366000436"
+    "id": "1376081941"
   },
   "packages": [
     {

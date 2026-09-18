@@ -5,6 +5,11 @@
  * `SERVER_VERSION` is what the client displays and `get_server_info` reports. A bump that misses
  * one of them ships a server announcing a version nobody can install -- the failure this file
  * exists to catch, before a release rather than after it.
+ *
+ * The repository URL is checked here for the same reason. Both files carry it, neither is derived
+ * from the other, and both are frozen at publication: npm takes it from the tarball and the MCP
+ * Registry refuses to change a published version's metadata. A move that updates one and forgets
+ * the other is only visible once the version is spent.
  */
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -37,6 +42,19 @@ describe("the release identity", () => {
 
   it("carries the same registry name on both sides", () => {
     assert.equal(registry.name, pkg.mcpName);
+  });
+
+  it("points both sides at the same repository", () => {
+    // `package.json` writes `git+https://...git`, `server.json` writes the plain browse URL. The
+    // two spellings are the same repository, and that is what must not drift.
+    const canonical = (url: string) => url.replace(/^git\+/, "").replace(/\.git$/, "");
+
+    assert.equal(canonical(registry.repository.url), canonical(pkg.repository.url));
+    assert.match(canonical(pkg.repository.url), /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/);
+    assert.equal(registry.repository.source, "github");
+    // The registry stores GitHub's numeric repository id, which survives a rename; a name put here
+    // by mistake resolves to a different repository than the URL.
+    assert.match(registry.repository.id, /^[0-9]+$/);
   });
 
   it("versions the registry entry and its package together", () => {

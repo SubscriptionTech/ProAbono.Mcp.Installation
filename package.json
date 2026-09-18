@@ -41,7 +41,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/SubscriptionTech/Claude.Publiable.McpInstallation.git"
+    "url": "git+https://github.com/SubscriptionTech/ProAbono.Mcp.Installation.git"
   },
   "homepage": "https://www.proabono.com",
   "bugs": {
