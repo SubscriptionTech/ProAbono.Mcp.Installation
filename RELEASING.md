@@ -1,7 +1,9 @@
 # Releasing
 
 How `@proabono/mcp-installation` is published, to npm and to the MCP Registry. This is a maintainer
-procedure — contributors never bump a version, see [CONTRIBUTING.md](CONTRIBUTING.md).
+procedure — contributors open pull requests and never push, so they never bump a version, see
+[CONTRIBUTING.md](CONTRIBUTING.md). Maintainers bump on every push, which is a separate rule from
+this one: see [CLAUDE.md](CLAUDE.md#release-identity).
 
 **A published version number is spent.** npm refuses to republish it, even after an unpublish, and
 the MCP Registry refuses to change a published version's metadata. Everything below is written so
@@ -29,29 +31,36 @@ Two things break trusted publishing silently, so check them before blaming anyth
   later. `release.yml` pins `24.x`. The `release path` job in `ci.yml` asserts the npm floor on every
   push, so this one is caught before a release rather than during it.
 
-## 1. Bump the version
+## 1. Check the version to release
+
+**A release does not bump anything.** The version on `main` is already ahead: every push to this
+repository carries a patch increment and opens its own `CHANGELOG.md` section, which is the rule in
+[CLAUDE.md](CLAUDE.md#release-identity). A release tags the number `main` has reached. It follows
+that most patch numbers are never released, and that is expected.
 
 Four places must agree, and `tests/release.test.ts` fails if they do not: `package.json` `version`,
-`server.json` `version` **and** `packages[0].version`, and `SERVER_VERSION` in `src/server.ts`.
-
-```bash
-npm version <x.y.z> --no-git-tag-version   # package.json + package-lock.json
-```
-
-Then edit `server.json` (both occurrences) and `src/server.ts` by hand, and add the entry to
-[CHANGELOG.md](CHANGELOG.md) with its link references at the bottom of the file.
-
-`--no-git-tag-version` matters: the tag is pushed deliberately in step 2, not created as a side
-effect of the bump.
-
-Verify and commit:
+`server.json` `version` **and** `packages[0].version`, and `SERVER_VERSION` in `src/server.ts`. The
+test suite is what confirms it:
 
 ```bash
 npm ci && npm run typecheck && npm run build && npm test
 ```
 
-Push the commit to `main` and let CI go green on Node 20.x, 22.x and 24.x before tagging. A tag on a
-commit CI has not seen is the one avoidable way to discover a problem during a release.
+Then confirm the number is still free — a tag for it means it is already released and spent:
+
+```bash
+git tag -l "v$(node -p "require('./package.json').version")"
+```
+
+Empty output is what you want. If it prints a tag, `main` was pushed without its increment: bump a
+patch, open its CHANGELOG section, push that commit, and start this step again.
+
+The CHANGELOG section for the version being released already exists, written by the push that
+created the number. Check its link reference at the bottom of the file resolves, and give the
+section the release date if it does not carry one.
+
+Let CI go green on Node 20.x, 22.x and 24.x on the commit you are about to tag. A tag on a commit CI
+has not seen is the one avoidable way to discover a problem during a release.
 
 ## 2. Push the tag
 

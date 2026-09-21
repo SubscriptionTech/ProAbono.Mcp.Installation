@@ -15,7 +15,7 @@ this file, which is why the rules below are repeated here rather than referenced
 Only two sources are authoritative when building or changing the MCP server. Read them before
 writing code, and never infer ProAbono behaviour from memory, from the web, or from older specs.
 
-1. `resources/open-api/` — the ProAbono API Live contract (`pa-live-openapi-3.0.3.yaml`).
+1. `resources/open-api/` — the ProAbono API Live contract (`pa-live-openapi.yaml`).
    Authoritative for endpoints, parameters, payloads, response shapes and authentication. It is a
    copy of the contract maintained in the private `Claude.SharedApi.ProAbonoLive` repository, which
    is the source of truth. `npm run build` and `npm test` refresh the copy from there when that
@@ -43,12 +43,27 @@ They are public because they ship inside the published package.
 The version lives in four places that `tests/release.test.ts` forces to agree: `package.json`
 `version`, `server.json` `version` and `packages[0].version`, and `SERVER_VERSION` in
 `src/server.ts`. The same test checks that `package.json` and `server.json` name the same
-repository. Never bump one of them alone, and never bump as part of a feature change — a version is
-bumped as part of a release.
+repository. Never bump one of them alone.
+
+**Never push this repository to its remote without incrementing the version first.** That binds
+every push, not only the `v*` tag that releases: an ordinary commit on `main` publishes nothing, and
+still carries a bump. A published version number is spent — npm refuses to republish it even after
+an unpublish — so the number on `main` must never be one already consumed.
+
+**The increment is always a patch**, whatever the push contains. A docs-only push and a bug fix both
+cost `+0.0.1`; a feature landing on `main` does not move the minor. `npm version patch
+--no-git-tag-version` covers `package.json` and `package-lock.json`, and the other two fields are
+edited by hand in the same commit. The minor and the major move only when a release is decided
+deliberately.
+
+The same commit opens that version's own section in [CHANGELOG.md](CHANGELOG.md) and writes the
+push's entries there. **There is no `[Unreleased]` section** — the version a change belongs to is
+known when the change is pushed. A section is therefore not evidence that the version was
+published: most never are, since only a tagged version reaches npm.
 
 Pushing a `v*` tag *is* the release: `.github/workflows/release.yml` builds, tests and publishes to
-npm with provenance. A published version number is spent and cannot be reused. The MCP Registry
-publication stays manual, under DNS authentication, and must run **after** npm.
+npm with provenance. The MCP Registry publication stays manual, under DNS authentication, and must
+run **after** npm.
 
 The whole procedure — what to bump, what the workflow does, how to authenticate to the registry, and
 how to verify the result — is in [RELEASING.md](RELEASING.md). Read it before running a release
