@@ -6,9 +6,9 @@
 **Stack:** Node.js / TypeScript — stdio MCP server, distributed on npm and run via `npx`
 
 This repository is attached as a Git submodule to `SubscriptionTech/Claude.Publiable.McpInstallation`,
-which holds the Claude rules, the project memory and the private notes. A session opened on that
-parent sees both; a session opened on this folder alone sees only this file, which is why the rules
-below are repeated here rather than referenced.
+which is private and holds the Claude rules, the project memory, the product specs and the private
+notes. A session opened on that parent sees both; a session opened on this folder alone sees only
+this file, which is why the rules below are repeated here rather than referenced.
 
 ## Sources of truth
 
@@ -29,9 +29,10 @@ If the two disagree, or if something needed is in neither, ask the user instead 
 ## Specs
 
 **This repository holds no specification.** The product specs, the build plans and the backlog are
-private, in [Claude.Internal.McpInstallation](https://github.com/SubscriptionTech/Claude.Internal.McpInstallation).
-Read them there before changing what a tool does, what it is named, or what it returns — the spec is
-the source of truth about the product, and this repository is its implementation.
+private, in `specs/` of the parent repository named above. Read them there before changing what a
+tool does, what it is named, or what it returns — the spec is the source of truth about the product,
+and this repository is its implementation. A session opened on this folder alone cannot see them:
+say so rather than reconstructing a contract from the code.
 
 What this repository holds under `resources/` is not a spec: it is the two inputs the build vendors
 into `dist/resources/` — the ProAbono API Live contract and the installation documentation corpus.

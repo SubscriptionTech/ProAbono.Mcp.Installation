@@ -48,9 +48,9 @@ credential to build. The details, and what the copy deliberately leaves behind, 
 
 ## The specifications are private
 
-What each tool must do, what it is named and what it returns are specified in
-`SubscriptionTech/Claude.Internal.McpInstallation`, which is private. This repository is the
-implementation of that specification, not the specification itself. A change to a tool's contract
+What each tool must do, what it is named and what it returns are specified in the private
+repository this one is a submodule of. This repository is the implementation of that specification,
+not the specification itself. A change to a tool's contract
 starts there; if you cannot see it, open an issue describing the behaviour you expect and we will
 reconcile the two.
 
