@@ -1,7 +1,9 @@
 /**
  * Refreshes the vendored API Live contract from its source of truth, when that source is reachable.
  *
- * `resources/open-api/pa-live-openapi-3.0.3.yaml` is a copy. It is authored in
+ * `resources/open-api/pa-live-openapi.yaml` is a copy, renamed on the way in: upstream the file
+ * carries the OpenAPI version it is written against, `pa-live-openapi-3.0.3.yaml`, and here it does
+ * not, so a version bump upstream never renames a path this repository refers to. It is authored in
  * `SubscriptionTech/Claude.SharedApi.ProAbonoLive`, which is attached to the *workspace* repository
  * as `shared/ProAbonoLive` -- one level above this repository's root. It is not attached here, and
  * it is private, so most of the places this build runs cannot see it:
@@ -24,7 +26,9 @@ import { copyFileSync, existsSync, readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const CONTRACT = "pa-live-openapi-3.0.3.yaml";
+// The upstream file is named after the OpenAPI version it is written against; the copy is not.
+const SOURCE_CONTRACT = "pa-live-openapi-3.0.3.yaml";
+const CONTRACT = "pa-live-openapi.yaml";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const target = join(root, "resources/open-api", CONTRACT);
@@ -32,7 +36,7 @@ const target = join(root, "resources/open-api", CONTRACT);
 const upstreamDir = process.env.PROABONO_LIVE_DIR
   ? resolve(process.env.PROABONO_LIVE_DIR)
   : resolve(root, "../shared/ProAbonoLive");
-const source = join(upstreamDir, "open-api", CONTRACT);
+const source = join(upstreamDir, "open-api", SOURCE_CONTRACT);
 
 const say = (message) => process.stderr.write(`contract: ${message}\n`);
 
@@ -52,5 +56,5 @@ if (normalise(source) === normalise(target)) {
 }
 
 copyFileSync(source, target);
-say(`refreshed from ${source}`);
+say(`refreshed from ${source}, copied to resources/open-api/${CONTRACT}`);
 say(`commit resources/open-api/${CONTRACT} on its own, naming the upstream commit it came from`);

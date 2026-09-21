@@ -21,7 +21,7 @@ import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const openApiSource = join(root, "resources/open-api/pa-live-openapi-3.0.3.yaml");
+const openApiSource = join(root, "resources/open-api/pa-live-openapi.yaml");
 const docsSource = join(root, "resources/docs");
 const target = resolve(root, process.argv[2] ?? "dist/resources");
 

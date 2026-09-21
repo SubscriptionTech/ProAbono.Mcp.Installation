@@ -1,6 +1,6 @@
 # API Live contract
 
-`pa-live-openapi-3.0.3.yaml` — the ProAbono **API Live** contract. Authoritative for endpoints,
+`pa-live-openapi.yaml` — the ProAbono **API Live** contract. Authoritative for endpoints,
 parameters, payloads, response shapes and authentication. Nothing in this project may infer API
 behaviour from memory, from the web, or from an older spec when this file can answer.
 
@@ -10,6 +10,11 @@ It is a **copy**. The contract is authored and maintained in
 [SubscriptionTech/Claude.SharedApi.ProAbonoLive](https://github.com/SubscriptionTech/Claude.SharedApi.ProAbonoLive),
 alongside the resource documentation it is kept in sync with. That repository is the source of
 truth; this file is what the build reads.
+
+It is **renamed on the way in**: upstream the file is `open-api/pa-live-openapi-3.0.3.yaml`, named
+after the OpenAPI version it is written against, and the refresh copies it here as
+`pa-live-openapi.yaml`. The version belongs in the document, not in the file name, so an upstream
+bump to a later OpenAPI version leaves every path in this repository untouched.
 
 That repository is private, and **this one does not depend on it**: the copy is committed here and
 the build vendors it into `dist/resources/openapi.json`, so a clone builds with no credential and CI
@@ -22,7 +27,8 @@ refresh.
 ## Refreshing it
 
 `npm run build` and `npm test` both run `scripts/refresh-contract.mjs` first, which copies the
-contract over from the source of truth when it can reach it. There is nothing to do by hand.
+contract over from the source of truth when it can reach it, under the renamed path above. There is
+nothing to do by hand.
 
 It can reach it when this repository sits inside its workspace, which attaches
 `Claude.SharedApi.ProAbonoLive` as `shared/ProAbonoLive` one level above this root. Set
