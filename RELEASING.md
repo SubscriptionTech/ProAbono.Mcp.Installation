@@ -92,6 +92,23 @@ section the release date if it does not carry one.
 Let CI go green on Node 20.x, 22.x and 24.x on the commit you are about to tag. A tag on a commit CI
 has not seen is the one avoidable way to discover a problem during a release.
 
+### When the release removes or renames a tool
+
+A break has to reach the three places a consumer actually reads, and only one of them is in the
+tarball:
+
+1. **The `CHANGELOG.md` section** names every removed tool and what to call instead. Written by the
+   push that made the change, not invented here.
+2. **The README's `## Tools` list** carries the new names and none of the retired ones. The suite
+   holds this — it fails when the list and `createServer` disagree either way — so it needs no
+   manual check, only a green run.
+3. **The MCP Registry entry** (`server.json`) carries a `description` that is still true of the
+   surface being published. Nothing enforces that one: read it.
+
+A removed name is removed, not aliased. If an alias is ever kept, it is a deliberate decision
+recorded in the CHANGELOG, and the retired-name assertion in `tests/tools.test.ts` is what has to be
+changed to allow it — that assertion exists so a rename cannot be undone by a merge.
+
 ## 2. Push the tag
 
 The tag **is** the release trigger. Nothing else starts one.

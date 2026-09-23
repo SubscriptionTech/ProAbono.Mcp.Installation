@@ -123,11 +123,22 @@ export function registerUsageRightsTools(server: McpServer, context: ToolContext
           rightsModule(stack),
           "```",
           "",
+          "It calls **one function this code does not define**: the operational alert raised when a " +
+            "rights read fails — `alertOperations` / `alert_operations`, or the logger already " +
+            "injected in the C# version. Wire it to whatever the project already uses. Leaving it " +
+            "undefined turns a recoverable read failure into a crash, which is the opposite of what " +
+            "the fallback is for.",
+          "",
           "## 3. The gate, and writing a change back",
           "",
           "```",
           gateSnippet(stack),
           "```",
+          "",
+          "The gate calls three more the project owns: the session it reads the customer reference " +
+            "from, `confirmWithCustomer` — the confirmation shown to the **end customer**, not to " +
+            "you, before a billable change — and the ProAbono write itself, which is the matching " +
+            "Usage tool of this server.",
           "",
           "## 4. The cache expiry policy",
           "",

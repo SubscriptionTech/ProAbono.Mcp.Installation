@@ -230,7 +230,10 @@ export function registerCustomerTools(server: McpServer, context: ToolContext): 
         customer_ref: z.string().min(1).describe("Shared reference of the customer."),
         note: z
           .string()
-          .describe("The note to print. Pass an empty string to clear the current one."),
+          .describe(
+            "The note to print. The endpoint is a partial update, so the note is only ever " +
+              "changed by this call and never by the other two payment-settings tools.",
+          ),
       },
     },
     async ({ customer_ref, note }): Promise<ToolResult> =>

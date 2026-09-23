@@ -5,6 +5,36 @@ All notable changes to `@proabono/mcp-installation` are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1]
+
+Corrections to the catalogue of `0.2.0`, which was never published — the two sections are one
+release if `0.2.1` is the number that gets tagged.
+
+### Fixed
+
+- **`install_customer_portal` told developers to provision with `create_customer`**, which `0.2.0`
+  removed. It names `create_update_customer`. A new assertion fails when any tool description or
+  any generated output points at a retired name, which is how this was found and is what stops it
+  recurring.
+- **`sync_usage_rights` now names the functions it expects the project to supply** — the
+  operational alert the rights module raises on a failed read, and the end-customer confirmation
+  the gate asks before a billable change. Pasted without them the module raised a `ReferenceError`
+  on exactly the path the last-known-good fallback exists to survive.
+- **The generated rights module no longer sends `ReferenceSegment` on `/v1/Usages`.** The contract
+  declares none on that operation — alone among the collections this server reads — and the server
+  itself sends none there. Generated code passing one was extrapolating from the other collections.
+- `set_invoice_note` no longer claims an empty string clears the note. The endpoint's behaviour on
+  an empty value is not established, and the description now says only what is: the note is changed
+  by this call and by no other.
+
+### Added
+
+- **The README's tool list is held by the suite.** It fails when a registered tool is missing from
+  the `## Tools` section, and when that section names a tool the server does not register. The
+  README is what npm renders and nothing derived it from `createServer`; it had drifted before.
+- [RELEASING.md](RELEASING.md) gains a step for a release that removes or renames a tool: the three
+  places a consumer reads a break, and which of them the suite already holds.
+
 ## [0.2.0]
 
 **BREAKING.** Three tool names of `0.1.0` are removed and replaced by the five tools they were
@@ -132,6 +162,7 @@ First release.
 - **Server introspection**: `get_server_info`, reporting the version and which environment variables
   are configured, never their values.
 
+[0.2.1]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
 [0.2.0]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/releases/tag/v0.0.1
