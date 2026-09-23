@@ -3699,6 +3699,17 @@ components:
           type: string
           nullable: true
           description: Note printed at the bottom of the invoice PDF
+        TypeCredit:
+          type: string
+          nullable: true
+          enum:
+            - Refund
+            - Voiding
+          description: "Kind of credit note. Its **absence identifies a debit invoice** — there is no separate flag. `GET /v1/Invoices` returns debit invoices and credit notes together and offers no filter on this field."
+        Reason:
+          type: string
+          nullable: true
+          description: "Free text explaining why the credit note was issued. Assumed absent on a debit invoice; that assumption is unconfirmed."
         Links:
           type: array
           items:

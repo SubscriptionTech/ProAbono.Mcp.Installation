@@ -5,9 +5,69 @@ All notable changes to `@proabono/mcp-installation` are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0]
+
+**BREAKING.** Three tool names of `0.1.0` are removed and replaced by the five tools they were
+standing in for. The break rides this release deliberately, while adoption is near zero, rather
+than accumulating behind an alias. **No alias is kept**: a call to a removed name fails outright,
+with the tool simply absent from the listing, which is what makes the replacement visible instead
+of silently deprecated.
+
+| Removed in `0.2.0` | Call instead | Why |
+|---|---|---|
+| `create_customer` | `create_update_customer` | `POST /v1/Customer` is an upsert on `ReferenceCustomer`. A tool described as "creates" is not reached for to update, and a create/update pair forces a guess about whether the reference already exists. |
+| `update_customer` | `create_update_customer` | The same endpoint, and the same reason. |
+| `change_subscription` (`action: "start"`) | `start_subscription` | One endpoint per transition, each with its own parameters and its own failure modes. An `action` enum made the model pick the transition out of a description instead of out of a tool name. |
+| `change_subscription` (`action: "upgrade"`) | `upgrade_subscription` | As above. |
+| `change_subscription` (`action: "suspend"`) | `suspend_subscription` | As above. |
+| `change_subscription` (`action: "terminate"`) | `terminate_subscription` | As above. |
+
+The arguments carry over unchanged, except that `subscription_id` is now the only shared one and
+each transition takes just the parameters its own endpoint accepts. `upgrade_subscription` requires
+`offer_ref` in its schema rather than rejecting the call at run time.
+
+### Added
+
+Twenty-three tools, bringing the catalogue to thirty-six. Every one of them is thin — one Live API
+operation, in the developer's vocabulary — except `sync_usage_rights`, which generates code.
+
+- **Rights synchronization (In-Site step 3)**: `sync_usage_rights` generates the Usage read, the
+  rights cache and its expiry, the gate at a call site, and the write-back for a Feature the
+  application changes — quoted and confirmed with the end customer when it is billable. It reads
+  the account's real Features so the generated code names them, and, given a customer reference,
+  diagnoses what that customer's Usages actually say. **Its resynchronization wiring is not
+  generated**: it needs the notification endpoint, which this version does not scaffold, and the
+  tool says so where it generates the cache rather than leaving it to be discovered.
+- **Customer**: `get_billing_address`, `get_payment_settings`, `set_next_billing_date`,
+  `set_invoice_note`, `set_payment_method`, `anonymize_customer`.
+- **Subscription**: `get_subscription`.
+- **Offers**: `list_offers_for_customer` — what one customer may take, and the upgrade options of a
+  running subscription. `list_offers` no longer takes a customer reference; that question now has
+  its own tool, and its own answer.
+- **Usage**: `quote_usage_change`, `add_feature_consumption`, `set_feature_current_quantity`,
+  `set_feature_enabled`. Each write carries one mode and one only, split by Feature type:
+  `Increment` for `Consumption`, `QuantityCurrent` for `Limitation`, `IsEnabled` for `OnOff`. The
+  retry-unsafe mode is never offered where a safe one exists.
+- **Invoicing and balance**: `get_invoice`, `get_credit_note`, `list_invoices`,
+  `create_balance_line`, `bill_customer`. `list_invoices` is one tool and returns both debit
+  invoices and credit notes, because `GET /v1/Invoices` does and offers no filter.
+
+`anonymize_customer` is the first and only tool in this server whose effect cannot be undone. It is
+in scope because it destroys no billing history: it erases the personal data and keeps the invoices
+and the subscription history, which is what a GDPR erasure asks of a billing system. Deleting a
+customer, a subscription or an invoice remains out of scope in any account, as do customer
+suspension, invalidation and link revocation.
 
 ### Changed
+
+- **The vendored API Live contract gains `TypeCredit` and `Reason` on `Invoice`**, which is what
+  makes `get_credit_note` possible: the absence of `TypeCredit` is what identifies a debit invoice,
+  and there is no separate flag. The fix was made in the contract's source of truth, not in the
+  vendored copy.
+- `DateStamp` is defaulted to now and normalized to UTC on every Usage write and quote, and a date
+  in the future is refused with an explanation rather than passed on for the API to reject.
+- The tool modules are now organized by the group they belong to — customers, subscriptions,
+  catalogue, usages, invoicing — instead of by read versus write. Nothing a client sees changed.
 
 - The API is named **"API Live"** throughout, never "Live API" — ProAbono's own naming rule. This is
   user-visible in three places: the `get_api_reference` tool's title and description, which an MCP
@@ -17,6 +77,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   every build and every test run, when that source is reachable. It is not reachable in CI or in a
   clone of this repository on its own, and there the committed copy is used — the build says which
   of the two happened on every run. Nothing about building this repository changed.
+- [RELEASING.md](RELEASING.md) and [CLAUDE.md](CLAUDE.md) now state the bump rule as its own step,
+  ahead of the release procedure, and list **every** file carrying the version rather than only the
+  four the test suite enforces. The rule itself is unchanged; it was stated in passing and was
+  missed.
+- **Deprecating superseded versions is now part of releasing.** Once a new version is verified live
+  on npm, every older version is deprecated, so exactly one version — the one `latest` points at —
+  is undeprecated at rest. `latest` itself is never deprecated: npm warns on install, which would
+  warn everyone. Written as step 5 of [RELEASING.md](RELEASING.md) and in the *Release identity*
+  section of [CLAUDE.md](CLAUDE.md). Applied retroactively to `0.0.1`, whose repository link points
+  at a repository that is no longer public.
+- The README no longer names a version in its "Early version" heading. It said `0.0.1` while npm
+  served `0.1.0`: prose that repeats the version goes stale silently, since no test holds it.
+
+Everything from "The API is named" down to this line was written against a `0.1.1` that was never
+pushed and never published. The version a change belongs to is the one it is pushed under, so those
+entries live here.
 
 ## [0.1.0] — 2026-09-18
 
@@ -56,6 +132,6 @@ First release.
 - **Server introspection**: `get_server_info`, reporting the version and which environment variables
   are configured, never their values.
 
-[Unreleased]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
+[0.2.0]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.0.1...v0.1.0
 [0.0.1]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/releases/tag/v0.0.1

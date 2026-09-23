@@ -1,12 +1,17 @@
 /**
- * The live lane: the journey of steps 4 and 5 against a real ProAbono account.
+ * The live lanes: the writes of this release exercised against a real ProAbono account.
  *
- * It runs only when the seven variables are present in the environment, and it expects the
+ * They run only when the seven variables are present in the environment, and they expect the
  * fixture account described in Spec-test-account.md, in the internal specs repository: a Business
- * used for nothing else,
- * a Segment pool, three Features (one per type), and at least one Offer carrying a Feature.
+ * used for nothing else, a Segment pool, three Features (one per type), and at least one Offer
+ * carrying a Feature.
  *
- * It ends on the default-Segment tripwire. `ReferenceSegment` is optional on every operation, so
+ * Two lanes, deliberately separate. The first runs the journey -- customer, subscription
+ * transitions, payment settings, Usage writes, balance and billing. The second covers
+ * anonymization, on a customer created for that alone: the effect cannot be undone, so no other
+ * assertion may ever depend on the customer it consumes.
+ *
+ * Both end on the default-Segment tripwire. `ReferenceSegment` is optional on every operation, so
  * a dropped reference does not raise an error -- it silently acts on the Business's default
  * Segment. Asserting that nothing appeared there is the only way to observe that bug.
  */
@@ -30,6 +35,13 @@ const CONFIGURED = [
 const RUN = `mcp-${Date.now().toString(36)}`;
 
 const live = CONFIGURED ? describe : describe.skip;
+
+interface Usage {
+  readonly ReferenceFeature?: string;
+  readonly TypeFeature?: string;
+  readonly QuantityCurrent?: number;
+  readonly IsEnabled?: boolean;
+}
 
 live("live journey against the fixture account", () => {
   let configuration: ProAbonoConfiguration;
@@ -58,10 +70,10 @@ live("live journey against the fixture account", () => {
     defaultSegmentBaseline = await countInDefaultSegment(configuration);
   });
 
-  it("creates, updates and bills a customer, then subscribes them", async () => {
-    const customerRef = `${RUN}-cust`;
+  it("upserts a customer through the one endpoint that creates and updates", async () => {
+    const customerRef = `${RUN}-upsert`;
 
-    const created = await client.post<{ ReferenceCustomer?: string }>("/v1/Customer", {
+    const created = await client.post<{ Id?: number; ReferenceCustomer?: string }>("/v1/Customer", {
       body: {
         ReferenceCustomer: customerRef,
         ReferenceSegment: configuration.segmentRef,
@@ -71,14 +83,53 @@ live("live journey against the fixture account", () => {
     });
     assert.equal(created.ReferenceCustomer, customerRef);
 
-    await client.post("/v1/Customer", {
+    // The same call again, with a different name: an upsert, not a duplicate and not a failure.
+    const updated = await client.post<{ Id?: number; Name?: string }>("/v1/Customer", {
       body: {
         ReferenceCustomer: customerRef,
         ReferenceSegment: configuration.segmentRef,
         Name: "MCP suite (updated)",
       },
     });
+    assert.equal(updated.Id, created.Id, "the second call created a second customer");
+    assert.equal(updated.Name, "MCP suite (updated)");
+  });
 
+  it("writes each payment setting without disturbing the other two", async () => {
+    const customerRef = `${RUN}-settings`;
+    await client.post("/v1/Customer", {
+      body: { ReferenceCustomer: customerRef, ReferenceSegment: configuration.segmentRef },
+    });
+
+    await client.post("/v1/CustomerSettingsPayment", {
+      query: { ReferenceCustomer: customerRef },
+      body: { NoteInvoice: "PO.mcp-suite" },
+    });
+    await client.post("/v1/CustomerSettingsPayment", {
+      query: { ReferenceCustomer: customerRef },
+      body: { TypePayment: "ExternalBank" },
+    });
+
+    const settings = await client.get<{ NoteInvoice?: string; TypePayment?: string }>(
+      "/v1/CustomerSettingsPayment",
+      { ReferenceCustomer: customerRef },
+    );
+
+    // The second write must not have cleared what the first one set.
+    assert.equal(settings.NoteInvoice, "PO.mcp-suite");
+    assert.equal(settings.TypePayment, "ExternalBank");
+  });
+
+  it("runs the subscription, Usage, balance and billing journey", async () => {
+    const customerRef = `${RUN}-journey`;
+
+    await client.post("/v1/Customer", {
+      body: {
+        ReferenceCustomer: customerRef,
+        ReferenceSegment: configuration.segmentRef,
+        Email: `${RUN}-journey@example.test`,
+      },
+    });
     await client.post("/v1/CustomerAddressBilling", {
       query: { ReferenceCustomer: customerRef },
       body: { FirstName: "MCP", LastName: "Suite", City: "Paris", Country: "FR" },
@@ -90,15 +141,53 @@ live("live journey against the fixture account", () => {
     });
     assert.ok(typeof subscription.Id === "number");
 
-    const usages = await client.listAll<{ ReferenceFeature?: string }>("/v1/Usages", {
-      ReferenceCustomer: customerRef,
-    });
+    const usages = await client.listAll<Usage>("/v1/Usages", { ReferenceCustomer: customerRef });
     assert.ok(
       usages.length > 0,
       "A started subscription on an offer carrying a Feature must return at least one Usage.",
     );
 
-    await client.post(`/v1/Subscription/{IdSubscription}/Termination`, {
+    // One Usage write per Feature type the fixture carries, each in its own mode.
+    for (const usage of usages) {
+      const stamp = new Date().toISOString();
+      const body: Record<string, unknown> = {
+        ReferenceCustomer: customerRef,
+        ReferenceFeature: usage.ReferenceFeature,
+        DateStamp: stamp,
+      };
+
+      if (usage.TypeFeature === "OnOff") body["IsEnabled"] = true;
+      else if (usage.TypeFeature === "Limitation") body["QuantityCurrent"] = 2;
+      else if (usage.TypeFeature === "Consumption") body["Increment"] = 1;
+      else continue;
+
+      // Quoted before it is applied, which is what the generated confirmation stands on.
+      await client.post("/v1/Quoting/Usage", { body });
+      await client.post("/v1/Usage", { body });
+    }
+
+    // Balance, then billing: the pair is only useful in that order.
+    await client.post("/v1/BalanceLine", {
+      body: { ReferenceCustomer: customerRef, Amount: 1000, Label: "MCP suite", Quantity: 1 },
+    });
+    const invoice = await client.post<{ Id?: number; Links?: { rel?: string; href?: string }[] }>(
+      "/v1/Billing/Customer",
+      { body: { ReferenceCustomer: customerRef, ForceOffline: true } },
+    );
+    assert.ok(typeof invoice.Id === "number", "billing a non-empty balance must issue an invoice");
+
+    // Read back by identifier, and the PDF taken from Links rather than built from the number.
+    const readBack = await client.get<{ Id?: number; Links?: { rel?: string; href?: string }[] }>(
+      "/v1/Invoice/{id}",
+      { id: invoice.Id },
+    );
+    assert.equal(readBack.Id, invoice.Id);
+    assert.ok(
+      (readBack.Links ?? []).some((link) => link.rel === "insite-related-invoice"),
+      "the invoice must publish its PDF under the insite-related-invoice rel",
+    );
+
+    await client.post("/v1/Subscription/{IdSubscription}/Termination", {
       query: { IdSubscription: subscription.Id, Immediate: true },
     });
   });
@@ -110,6 +199,62 @@ live("live journey against the fixture account", () => {
       defaultSegmentBaseline,
       `${found - defaultSegmentBaseline} customer(s) appeared in the Business's default Segment. ` +
         `A ReferenceSegment was dropped somewhere: the call succeeded against the wrong Segment.`,
+    );
+  });
+});
+
+live("live anonymization, on a customer created for it alone", () => {
+  let configuration: ProAbonoConfiguration;
+  let client: ProAbonoClient;
+
+  before(() => {
+    configuration = loadConfiguration();
+    client = new ProAbonoClient(configuration);
+  });
+
+  // Anonymization cannot be undone, so this customer exists for this test and is used nowhere
+  // else. What is asserted is the half that matters: the personal data goes, the invoices stay.
+  it("erases the personal data and keeps the billing history", async () => {
+    const customerRef = `${RUN}-gdpr`;
+
+    await client.post("/v1/Customer", {
+      body: {
+        ReferenceCustomer: customerRef,
+        ReferenceSegment: configuration.segmentRef,
+        Email: `${RUN}-gdpr@example.test`,
+        Name: "To be erased",
+      },
+    });
+    await client.post("/v1/BalanceLine", {
+      body: { ReferenceCustomer: customerRef, Amount: 500, Label: "GDPR lane", Quantity: 1 },
+    });
+    await client.post("/v1/Billing/Customer", {
+      body: { ReferenceCustomer: customerRef, ForceOffline: true },
+    });
+
+    const before_ = await client.listAll<{ Id?: number }>("/v1/Invoices", {
+      ReferenceCustomer: customerRef,
+    });
+    assert.ok(before_.length > 0, "the lane needs an invoice to prove one survives");
+
+    await client.post("/v1/Customer/Anonymization", { query: { ReferenceCustomer: customerRef } });
+
+    const anonymized = await client.get<{ Name?: string; Email?: string }>("/v1/Customer", {
+      ReferenceCustomer: customerRef,
+    });
+    assert.notEqual(anonymized.Name, "To be erased", "the name survived anonymization");
+    assert.ok(
+      anonymized.Email === undefined || anonymized.Email === null || !anonymized.Email.includes(RUN),
+      "the email survived anonymization",
+    );
+
+    const after_ = await client.listAll<{ Id?: number }>("/v1/Invoices", {
+      ReferenceCustomer: customerRef,
+    });
+    assert.equal(
+      after_.length,
+      before_.length,
+      "anonymization destroyed billing history, which it must never do",
     );
   });
 });

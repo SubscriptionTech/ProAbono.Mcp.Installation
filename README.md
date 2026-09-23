@@ -8,14 +8,16 @@ It runs locally, over stdio, against whatever account your key opens. It has no 
 
 ## Early version
 
-**0.0.1 is a first release.** What it does today:
+**This is an early release.** What it does today — the version you installed is in
+[CHANGELOG.md](CHANGELOG.md), and `get_server_info` reports it:
 
 - **Step 1 — Customer Portal**: generates the in-site embed, security hash included.
-- **Catalogue and account introspection**: offers, features, customers, subscriptions, usage.
-- **Customer and subscription writes**: create and update customers, billing addresses, subscriptions.
+- **Step 3 — rights synchronization**: generates the code that reads a customer's rights from the Usage API, caches them with a correct expiry and gates access on them.
+- **Catalogue and account introspection**: offers, features, customers, subscriptions, usage, invoices.
+- **Writes across the lifecycle**: customers and their settings, billing addresses, subscriptions and each of their four transitions, Usage writes for all three Feature types, balance lines and billing.
 - **Documentation and API reference**: natural-language search over the ProAbono corpus and the Live OpenAPI contract.
 
-Not in this version, and planned: **Step 2 — Subscription Workflow** code generation, **Step 3 — Usage API** rights synchronization, the notification-endpoint scaffold, the `install_insite` orchestrator, installation-state tracking, and end-to-end installation verification.
+Not in this version, and planned: **Step 2 — Subscription Workflow** code generation, the notification-endpoint scaffold (and with it the webhook resynchronization that `sync_usage_rights` leaves out), the `install_insite` orchestrator, installation-state tracking, end-to-end installation verification, and the generic `plan_integration` / `generate_integration_code` pair.
 
 Widget and plug-in installations (WordPress and similar) are out of scope by design: this server installs ProAbono **in-site, by code**.
 
@@ -86,27 +88,51 @@ No value you supply is ever logged, returned by a tool, put in an error message,
 - `search_documentation` — natural-language search across the ProAbono documentation and the Live OpenAPI contract.
 - `get_api_reference` — parameters and schema for a given endpoint or object.
 
-**Catalogue and account**
-- `list_offers`, `get_offer` — the offers your segment exposes.
-- `list_features` — the features of your business.
-- `get_customer` — a customer by reference.
-- `list_subscriptions` — a customer's subscriptions.
-- `get_usages` — a customer's rights and consumption.
-
-**Customers and subscriptions**
-- `create_customer`, `update_customer` — create and update a customer in your segment.
-- `update_billing_address` — set a customer's billing address.
-- `create_subscription` — subscribe a customer to an offer.
-- `change_subscription` — upgrade, downgrade or terminate.
-
-**Hosted pages**
+**Code generation**
 - `install_customer_portal` — the Step 1 in-site embed, with the security hash, for your stack.
 - `generate_pricing_table` — a pricing table over your real offers.
+- `sync_usage_rights` — the Step 3 rights module: the Usage read, the cache and its expiry, the gate, and the write-back for a Feature your application changes.
+
+**Catalogue**
+- `list_offers` — the offers your segment exposes.
+- `list_offers_for_customer` — the offers one customer may take, and the upgrade options of a running subscription.
+- `get_offer` — a single offer by reference.
+- `list_features` — the features of your business.
+
+**Customers**
+- `get_customer` — a customer by reference.
+- `create_update_customer` — create a customer, or update one that already carries the reference. One tool: the endpoint is an upsert.
+- `get_billing_address`, `update_billing_address` — the address invoices are issued against.
+- `get_payment_settings` — payment type, billing mode, grey-list flag, invoice note and next billing date, in one read.
+- `set_next_billing_date`, `set_invoice_note`, `set_payment_method` — one setting each. `set_payment_method` records a manual method; `Card` and `DirectDebit` are driven by the payment gateway.
+- `anonymize_customer` — **irreversible.** The GDPR erasure path: it erases the personal data and keeps the invoices and the subscription history.
+
+**Subscriptions**
+- `get_subscription`, `list_subscriptions` — what a customer is subscribed to.
+- `create_subscription` — subscribe a customer to an offer.
+- `start_subscription` — start a draft subscription, or restart a suspended one.
+- `upgrade_subscription` — move a subscription to another offer.
+- `suspend_subscription` — suspend it; `start_subscription` reverses that.
+- `terminate_subscription` — terminate it, at the end of the term by default.
+
+**Usage and rights**
+- `get_usages` — a customer's rights and consumption.
+- `quote_usage_change` — price an intended change, and check it is allowed, before applying it.
+- `add_feature_consumption` — report consumption of a `Consumption` feature.
+- `set_feature_current_quantity` — set the provisioned quantity of a `Limitation` feature.
+- `set_feature_enabled` — switch an `OnOff` feature.
+
+**Invoicing and balance**
+- `get_invoice` — a debit invoice, with its PDF URL.
+- `get_credit_note` — a credit note, with its `TypeCredit`, its reason and its PDF URL.
+- `list_invoices` — a customer's billing documents, both kinds together.
+- `create_balance_line` — a debit, or a credit when the amount is negative.
+- `bill_customer` — invoice whatever is sitting in the balance.
 
 **Server**
 - `get_server_info` — version and configuration status, values excluded.
 
-No tool in this server destroys or anonymizes anything. ProAbono's anonymization, invalidation, suspension and link-revocation endpoints exist and are deliberately not exposed, in any account.
+No tool in this server destroys billing history: deleting a customer, a subscription or an invoice is out of scope in any account, and ProAbono's customer-suspension, invalidation and link-revocation endpoints exist and are deliberately not exposed. `anonymize_customer` is the one tool whose effect cannot be undone, and it is not a destruction — it erases personal data and keeps the invoices and the subscription history, which is what a GDPR erasure asks of a billing system.
 
 ## Building from source
 

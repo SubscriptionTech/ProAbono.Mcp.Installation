@@ -98,9 +98,9 @@ export function registerHostedPageTools(server: McpServer, context: ToolContext)
             "## 4. Before this works",
             "",
             "- A ProAbono customer must exist for the signed-in user. Provision it at sign-up or " +
-              "first login with `create_customer` -- the recommended path, because the rights read " +
-              "needs the customer to exist too. Passing an unknown reference creates the customer on " +
-              "the fly instead, which works but leaves you without the mapping.",
+              "first login with `create_update_customer` -- the recommended path, because the rights " +
+              "read needs the customer to exist too. Passing an unknown reference creates the " +
+              "customer on the fly instead, which works but leaves you without the mapping.",
             "- The link to this page must be reachable from the customer area.",
             "- `PROABONO_BUSINESS_ID`, `PROABONO_SEGMENT_REF` and `PROABONO_PORTAL_SECRET` must be in " +
               "the application's configuration, and out of version control.",

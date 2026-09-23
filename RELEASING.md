@@ -2,8 +2,9 @@
 
 How `@proabono/mcp-installation` is published, to npm and to the MCP Registry. This is a maintainer
 procedure — contributors open pull requests and never push, so they never bump a version, see
-[CONTRIBUTING.md](CONTRIBUTING.md). Maintainers bump on every push, which is a separate rule from
-this one: see [CLAUDE.md](CLAUDE.md#release-identity).
+[CONTRIBUTING.md](CONTRIBUTING.md). Maintainers bump on **every** push, released or not: that rule
+is restated below under [Never push without a patch increment](#never-push-without-a-patch-increment)
+and owned by [CLAUDE.md](CLAUDE.md#release-identity).
 
 **A published version number is spent.** npm refuses to republish it, even after an unpublish, and
 the MCP Registry refuses to change a published version's metadata. Everything below is written so
@@ -12,10 +13,13 @@ that what can fail, fails *before* npm accepts a tarball.
 ## What you need
 
 - **Write access to this repository**, to push a tag.
-- **Nothing else for npm.** Publishing uses **trusted publishing**: npmjs.com holds a trusted
-  publisher for `@proabono/mcp-installation` naming this repository and the workflow file
+- **Nothing else to *publish* to npm.** Publishing uses **trusted publishing**: npmjs.com holds a
+  trusted publisher for `@proabono/mcp-installation` naming this repository and the workflow file
   `release.yml`, and the npm CLI authenticates from the OIDC token that GitHub Actions mints. There
   is no npm token to hold, rotate or expire.
+- **An npm login as a maintainer of `@proabono`**, for step 5 only. Deprecating a superseded version
+  is a metadata change on the published package, and it runs from your machine, not from CI:
+  `npm whoami` must answer. Nothing else in this procedure needs it.
 - **`mcp-publisher`** on your machine, and the Ed25519 signing key for the `com.proabono` namespace.
   The key never goes into a repository secret — the registry publish is deliberately manual and
   local.
@@ -31,29 +35,55 @@ Two things break trusted publishing silently, so check them before blaming anyth
   later. `release.yml` pins `24.x`. The `release path` job in `ci.yml` asserts the npm floor on every
   push, so this one is caught before a release rather than during it.
 
-## 1. Check the version to release
+## Never push without a patch increment
 
-**A release does not bump anything.** The version on `main` is already ahead: every push to this
-repository carries a patch increment and opens its own `CHANGELOG.md` section, which is the rule in
-[CLAUDE.md](CLAUDE.md#release-identity). A release tags the number `main` has reached. It follows
-that most patch numbers are never released, and that is expected.
+This rule comes before the release procedure because it is what makes the procedure possible, and
+it binds **every** push to `main`, not only a release. An ordinary commit publishes nothing and
+still costs `+0.0.1`.
 
-Four places must agree, and `tests/release.test.ts` fails if they do not: `package.json` `version`,
-`server.json` `version` **and** `packages[0].version`, and `SERVER_VERSION` in `src/server.ts`. The
-test suite is what confirms it:
+**A published version number is spent.** If `main` sits on a number already on npm, the next release
+has nowhere to go: the tag cannot be pushed, the workflow would be refused, and the commits that
+landed on the spent number belong to no version at all. That is not hypothetical — it happened
+between `0.1.0` and `0.1.1`, and five pushes had to be re-attributed after the fact.
 
-```bash
-npm ci && npm run typecheck && npm run build && npm test
-```
-
-Then confirm the number is still free — a tag for it means it is already released and spent:
+The check, run before `git push` and not after:
 
 ```bash
 git tag -l "v$(node -p "require('./package.json').version")"
 ```
 
-Empty output is what you want. If it prints a tag, `main` was pushed without its increment: bump a
-patch, open its CHANGELOG section, push that commit, and start this step again.
+**Empty output is what you want.** A tag means the number is spent and the push is owed a bump.
+
+The bump is one commit, and it touches every file carrying the version — `package.json`,
+`package-lock.json`, `server.json` (**two** fields), `SERVER_VERSION` in `src/server.ts`, and a new
+`CHANGELOG.md` section with its link reference. `tests/release.test.ts` enforces the first four;
+nothing enforces prose, so a version written into `README.md` or a comment is on you. The full list,
+the commands and the grep that catches stale prose are in
+[CLAUDE.md](CLAUDE.md#release-identity) — that section is the rule, this one is the reminder at the
+point of use.
+
+```bash
+npm version patch --no-git-tag-version   # package.json + package-lock.json
+# then, by hand, in the same commit: server.json ×2, src/server.ts, CHANGELOG.md
+npm test                                 # release.test.ts fails on any disagreement
+```
+
+## 1. Check the version to release
+
+**A release does not bump anything.** The version on `main` is already ahead, because of the rule
+above: every push carries a patch increment and opens its own `CHANGELOG.md` section. A release tags
+the number `main` has reached. It follows that most patch numbers are never released, and that is
+expected.
+
+Confirm the four places still agree and the suite is green:
+
+```bash
+npm ci && npm run typecheck && npm run build && npm test
+```
+
+Then run the spent-number check above one more time. If it prints a tag, stop: `main` was pushed
+without its increment. Bump a patch, open its CHANGELOG section, push that commit, and start this
+step again.
 
 The CHANGELOG section for the version being released already exists, written by the push that
 created the number. Check its link reference at the bottom of the file resolves, and give the
@@ -157,7 +187,46 @@ curl -s "https://registry.modelcontextprotocol.io/v0/servers?search=com.proabono
 - **MCP Registry** — the new version, with this repository's URL and its GitHub numeric id, and
   `isLatest: true`. Earlier versions keep whatever metadata they were published with, permanently.
 
-## 5. Afterwards
+## 5. Deprecate every version the new one supersedes
+
+**Once the new version is verified live — step 4, not before — every older version on npm is
+deprecated.** At rest, exactly one version of this package is undeprecated: the one `latest` points
+at. That is the invariant this step maintains, and it is what tells a developer who pinned an old
+number that they are not on the supported version.
+
+Never deprecate the version holding `latest`. npm prints a deprecation warning on install, so
+deprecating `latest` warns *everyone*, which is the opposite of the intent.
+
+```bash
+npm deprecate @proabono/mcp-installation@"<old x.y.z>" \
+  "Superseded: install @proabono/mcp-installation@latest instead."
+```
+
+Repeat per superseded version, or pass a semver range covering them all. Add a sentence to the
+message when a version has a defect worth naming — a dead repository link, a missing attestation,
+a bug — since the message is what a consumer sees at install time and it is the only channel to them.
+
+Run it **by hand**. The release workflow is deliberately not given this job: it changes the metadata
+of versions that are already public, and it belongs after a human has seen the new version actually
+working, not inside the run that uploaded it.
+
+Then confirm the invariant holds — every version but `latest` deprecated, `latest` clean:
+
+```bash
+curl -s "https://registry.npmjs.org/@proabono%2Fmcp-installation" | node -e 'let d="";process.stdin.on("data",c=>d+=c).on("end",()=>{const j=JSON.parse(d),l=j["dist-tags"].latest;for(const [v,m] of Object.entries(j.versions))console.log(v===l?"latest ":"       ",v,"->",m.deprecated===undefined?"NOT deprecated":"deprecated");})'
+```
+
+npm's read side lags its write side by minutes, here as at step 3: `npm view … deprecated` can come
+back empty right after the change. The `curl` above reads the registry document directly and is what
+to trust.
+
+A deprecation is reversible — `npm deprecate <pkg>@<version> ""` clears it. It is the only part of a
+published version that can still be changed.
+
+**The MCP Registry has no equivalent.** A published entry's metadata is frozen and older versions
+simply stop being `isLatest`. Nothing to do there.
+
+## 6. Afterwards
 
 Bump the submodule pointer in the parent repository,
 `SubscriptionTech/Claude.Publiable.McpInstallation`, and commit it — the parent tracks `main` of this

@@ -40,21 +40,40 @@ They are public because they ship inside the published package.
 
 ## Release identity
 
-The version lives in four places that `tests/release.test.ts` forces to agree: `package.json`
-`version`, `server.json` `version` and `packages[0].version`, and `SERVER_VERSION` in
-`src/server.ts`. The same test checks that `package.json` and `server.json` name the same
-repository. Never bump one of them alone.
-
 **Never push this repository to its remote without incrementing the version first.** That binds
 every push, not only the `v*` tag that releases: an ordinary commit on `main` publishes nothing, and
 still carries a bump. A published version number is spent — npm refuses to republish it even after
-an unpublish — so the number on `main` must never be one already consumed.
+an unpublish — so the number on `main` must never be one already consumed. Before pushing, `git tag
+-l "v$(node -p "require('./package.json').version")"` must print nothing; if it prints a tag, the
+bump was skipped on an earlier push and is owed now.
 
 **The increment is always a patch**, whatever the push contains. A docs-only push and a bug fix both
-cost `+0.0.1`; a feature landing on `main` does not move the minor. `npm version patch
---no-git-tag-version` covers `package.json` and `package-lock.json`, and the other two fields are
-edited by hand in the same commit. The minor and the major move only when a release is decided
-deliberately.
+cost `+0.0.1`; a feature landing on `main` does not move the minor. The minor and the major move only
+when a release is decided deliberately.
+
+**A bump updates every file that carries the version, in the same commit.** Four of them are held
+together by `tests/release.test.ts`, which also checks that `package.json` and `server.json` name the
+same repository:
+
+| File | What carries the version | Bumped by |
+|---|---|---|
+| `package.json` | `version` | `npm version patch --no-git-tag-version` |
+| `package-lock.json` | `version`, and `packages[""].version` | the same command |
+| `server.json` | `version` **and** `packages[0].version` — two fields | by hand |
+| `src/server.ts` | `SERVER_VERSION` | by hand |
+| `CHANGELOG.md` | the new section's heading, and its link reference at the foot of the file | by hand |
+
+The test covers the first four; **prose is not covered by anything**. A version number written into
+`README.md`, into a comment or into an issue template goes stale in silence — `README.md` said
+`0.0.1` while npm served `0.1.0`. Two rules follow: never write the current version into prose when
+"the current version" will do, and run this before every push, which must return only the files
+above:
+
+```bash
+grep -rn "$(node -p "require('./package.json').version.split('.').slice(0,2).join('.')")" \
+  --include="*.md" --include="*.ts" --include="*.json" --include="*.yml" . \
+  | grep -v node_modules | grep -v "^./dist/" | grep -v "^./build-test/"
+```
 
 The same commit opens that version's own section in [CHANGELOG.md](CHANGELOG.md) and writes the
 push's entries there. **There is no `[Unreleased]` section** — the version a change belongs to is
@@ -64,6 +83,13 @@ published: most never are, since only a tagged version reaches npm.
 Pushing a `v*` tag *is* the release: `.github/workflows/release.yml` builds, tests and publishes to
 npm with provenance. The MCP Registry publication stays manual, under DNS authentication, and must
 run **after** npm.
+
+**Once a new version is verified live, every older version on npm is deprecated.** At rest, exactly
+one version of this package is undeprecated — the one `latest` points at. Never deprecate `latest`
+itself: npm warns on install, so that would warn everyone. A deprecation message names the
+replacement, and adds what is wrong with that specific version when something is. Deprecating is
+reversible and is the only part of a published version that can still be changed; unpublishing is
+not an option in any case. The commands and the check are step 5 of [RELEASING.md](RELEASING.md).
 
 The whole procedure — what to bump, what the workflow does, how to authenticate to the registry, and
 how to verify the result — is in [RELEASING.md](RELEASING.md). Read it before running a release
