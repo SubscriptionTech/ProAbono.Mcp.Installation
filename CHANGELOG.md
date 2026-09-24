@@ -5,6 +5,17 @@ All notable changes to `@proabono/mcp-installation` are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.5]
+
+### Fixed
+
+- **`get_invoice` no longer suggests a missing PDF link is a problem.** An invoice read back the
+  moment billing returns publishes `insite-charge` and `insite-collection-invoice` and **not**
+  `insite-related-invoice` -- observed against a live account. The tool already refused to
+  fabricate a URL from the invoice number; it now says that an absent PDF link right after issuing
+  is normal and that the document is worth reading again later, instead of implying only a Draft
+  invoice lacks one.
+
 ## [0.2.4]
 
 ### Fixed
@@ -220,6 +231,7 @@ First release.
 - **Server introspection**: `get_server_info`, reporting the version and which environment variables
   are configured, never their values.
 
+[0.2.5]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
 [0.2.4]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
 [0.2.3]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
 [0.2.2]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD

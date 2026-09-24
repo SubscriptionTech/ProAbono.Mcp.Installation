@@ -194,28 +194,29 @@ live("live journey against the fixture account", () => {
     );
     assert.equal(readBack.Id, invoice.Id);
 
-    // The PDF link is asserted only where the account can produce `insite-*` links at all. Every
-    // one of them is built on the Segment's In-Site installation URL, configured in the BackOffice
-    // (Spec-test-account.md, setup item 6) and unreachable through the API -- so an invoice
-    // carrying NO insite link is a fixture that was never configured, not a product defect, and
-    // failing here would report the wrong thing. An invoice carrying some insite links but not the
-    // PDF one is a real defect, and that is what the assertion below catches.
-    const rels = (readBack.Links ?? []).map((link) => link.rel);
-    const insite = rels.filter((rel) => rel?.startsWith("insite-"));
+    // What a just-issued invoice actually publishes, observed on 2026-09-24: `insite-charge` and
+    // `insite-collection-invoice`, and **no `insite-related-invoice`** -- the PDF link is not there
+    // the moment billing returns. So the lane asserts what the API guarantees (a due invoice is
+    // payable, and every link it publishes carries an href or an encrypted query) and reports the
+    // PDF link rather than requiring it. `get_invoice` already answers its absence by saying so;
+    // what it must never do is rebuild the URL from the invoice number, and that is asserted
+    // offline, where a response with and without the link can both be replayed.
+    const links = readBack.Links ?? [];
+    const rels = links.map((link) => link.rel);
 
-    if (insite.length === 0) {
+    assert.ok(
+      rels.includes("insite-charge"),
+      `a due invoice must publish insite-charge so it can be paid; this one publishes ` +
+        `${rels.join(", ") || "no link at all"}. No insite-* link at all means the Segment has no ` +
+        `In-Site installation URL configured -- setup item 6 of Spec-test-account.md.`,
+    );
+
+    if (!rels.includes("insite-related-invoice")) {
       process.stderr.write(
-        `live: invoice ${invoice.Id} carries no insite-* link at all (rels: ${rels.join(", ") || "none"}). ` +
-          `The Segment has no In-Site installation URL configured, so the PDF link cannot be ` +
-          `checked here -- see setup item 6 of Spec-test-account.md.
+        `live: invoice ${invoice.Id} publishes ${rels.join(", ")} but no insite-related-invoice ` +
+          `yet. The PDF link is not available the moment billing returns; get_invoice reports its ` +
+          `absence rather than rebuilding the URL.
 `,
-      );
-    } else {
-      assert.ok(
-        insite.includes("insite-related-invoice"),
-        `the invoice publishes ${insite.join(", ")} but not its PDF under insite-related-invoice, ` +
-          `which is where get_invoice reads it and the one place it must never be rebuilt from the ` +
-          `invoice number`,
       );
     }
 

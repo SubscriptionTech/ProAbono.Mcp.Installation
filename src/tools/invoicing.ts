@@ -55,8 +55,11 @@ function describeDocument(document: InvoiceDocument): string {
 
 const noPdfNote =
   `This document publishes no "${PDF_REL}" link, so it has no PDF URL. A Draft invoice has none ` +
-  `yet. Do not build one from the invoice number: the real URL carries an encrypted query and ` +
-  `cannot be reconstructed.`;
+  `yet -- and neither does a freshly issued one: an invoice read back immediately after billing ` +
+  `publishes "insite-charge" and "insite-collection-invoice" and not this rel, so an absent PDF ` +
+  `link right after issuing is normal and not a failure. Read the document again later. Do not ` +
+  `build a URL from the invoice number: the real one carries an encrypted query and cannot be ` +
+  `reconstructed.`;
 
 export function registerInvoicingTools(server: McpServer, context: ToolContext): void {
   const { client } = context;
