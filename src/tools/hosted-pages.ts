@@ -16,6 +16,7 @@ import {
   templateSnippet,
   type Stack,
 } from "../generate/hosted-pages.js";
+import { recordStep, secretsOf, stateInputs, type StateInputs } from "../install/state.js";
 import { text, type ToolContext, type ToolResult } from "./context.js";
 import { guard } from "./guard.js";
 
@@ -53,9 +54,16 @@ export function registerHostedPageTools(server: McpServer, context: ToolContext)
             "Pass the application's UI language to ProAbono. Only when the application is the " +
               "authority for it: it overwrites what the customer set in the portal.",
           ),
+        ...stateInputs,
       },
     },
-    async ({ stack, target_page, pass_language }): Promise<ToolResult> =>
+    async ({
+      stack,
+      target_page,
+      pass_language,
+      project_root,
+      record_state,
+    }): Promise<ToolResult> =>
       guard(async () => {
         const offers = await client.listAll<Record<string, unknown>>("/v1/Offers", {});
         const catalogue =
@@ -63,6 +71,22 @@ export function registerHostedPageTools(server: McpServer, context: ToolContext)
             ? "No offer exists in this Segment. The portal renders, but the customer will have " +
               "nothing to subscribe to. Offers are authored in the ProAbono BackOffice.\n\n"
             : "";
+
+        const record = await recordStep(
+          { project_root, record_state } as StateInputs,
+          "customer_portal",
+          {
+            status: "generated",
+            generated: [
+              { what: "portal embed, render route and server-side hash", where: target_page, stack },
+            ],
+          },
+          {
+            segmentRef: configuration.segmentRef,
+            forbidden: secretsOf(configuration),
+            installation: { stack, host_page: target_page },
+          },
+        );
 
         return text(
           [
@@ -108,6 +132,7 @@ export function registerHostedPageTools(server: McpServer, context: ToolContext)
             "## 5. Checks a server cannot run for you",
             "",
             ...MANUAL_CHECKS.map((check) => `- ${check}`),
+            ...(record === undefined ? [] : ["", record]),
           ].join("\n"),
         );
       }),

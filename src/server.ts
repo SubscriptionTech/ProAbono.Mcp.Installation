@@ -22,10 +22,15 @@ import { registerCustomerTools } from "./tools/customers.js";
 import { registerDocumentationTools } from "./tools/documentation.js";
 import { registerHostedPageTools } from "./tools/hosted-pages.js";
 import { registerInfoTool } from "./tools/info.js";
+import { registerInstallTools } from "./tools/install.js";
+import { registerIntegrationTools } from "./tools/integration.js";
 import { registerInvoicingTools } from "./tools/invoicing.js";
+import { registerNotificationTools } from "./tools/notifications.js";
 import { registerSubscriptionTools } from "./tools/subscriptions.js";
 import { registerUsageRightsTools } from "./tools/usage-rights.js";
 import { registerUsageTools } from "./tools/usages.js";
+import { registerVerifyTools } from "./tools/verify.js";
+import { registerWorkflowTools } from "./tools/workflows.js";
 
 export const SERVER_NAME = "proabono-mcp-installation";
 /**
@@ -33,7 +38,7 @@ export const SERVER_NAME = "proabono-mcp-installation";
  * bug report. It must equal `version` in `package.json` and both versions in `server.json`, or the
  * server names a release that does not exist on npm; `tests/release.test.ts` fails when it drifts.
  */
-export const SERVER_VERSION = "0.2.5";
+export const SERVER_VERSION = "0.3.0";
 
 export function createServer(
   configuration: ProAbonoConfiguration,
@@ -46,9 +51,14 @@ export function createServer(
   };
 
   registerInfoTool(server, SERVER_VERSION);
+  registerInstallTools(server, context);
   registerHostedPageTools(server, context);
+  registerWorkflowTools(server, context);
   registerUsageRightsTools(server, context);
+  registerNotificationTools(server, context);
+  registerVerifyTools(server, context);
   registerDocumentationTools(server);
+  registerIntegrationTools(server, context);
   registerCustomerTools(server, context);
   registerSubscriptionTools(server, context);
   registerCatalogueTools(server, context);

@@ -6,10 +6,10 @@
  * actual diagnosis of what that customer's Usages say, which is the check that separates "the
  * integration is wrong" from "this customer has not subscribed".
  *
- * It ships incomplete on purpose, and says so where it matters: `scaffold_notification_endpoint`
- * is not in this release, so there is no endpoint to wire the resynchronization onto. The maximum
- * TTL is what bounds a stale entry until it lands, and the generated output states that next to
- * the cache rather than leaving a developer to discover it.
+ * The resynchronization is wired, not described: `refreshEntitlements` ships inside the generated
+ * rights module, and `scaffold_notification_endpoint` generates the endpoint that calls it. The
+ * maximum TTL stays all the same -- the webhook invalidates regardless of expiry, and the ceiling
+ * is what bounds a revoked right while the webhook is not yet validated in the BackOffice.
  */
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
@@ -19,10 +19,11 @@ import {
   EMPTY_RESPONSE_CAUSES,
   GATING_RULES,
   MAX_TTL_SECONDS,
-  MISSING_RESYNC,
+  RESYNC_WIRING,
   gateSnippet,
   rightsModule,
 } from "../generate/usage-rights.js";
+import { recordStep, secretsOf, stateInputs, type StateInputs } from "../install/state.js";
 import { text, type ToolContext, type ToolResult } from "./context.js";
 import { guard } from "./guard.js";
 
@@ -90,9 +91,16 @@ export function registerUsageRightsTools(server: McpServer, context: ToolContext
             "A real customer to check the wiring against. Their Usages are read and an empty " +
               "answer is diagnosed against their subscriptions.",
           ),
+        ...stateInputs,
       },
     },
-    async ({ stack, feature_refs, customer_ref }): Promise<ToolResult> =>
+    async ({
+      stack,
+      feature_refs,
+      customer_ref,
+      project_root,
+      record_state,
+    }): Promise<ToolResult> =>
       guard(async () => {
         const features = await client.listAll<Feature>("/v1/Features", {});
         const selected =
@@ -171,10 +179,38 @@ export function registerUsageRightsTools(server: McpServer, context: ToolContext
 
         sections.push(
           "",
-          "## 7. What this version does not generate",
+          "## 7. The resynchronization, and the endpoint that calls it",
           "",
-          MISSING_RESYNC,
+          RESYNC_WIRING,
         );
+
+        const record = await recordStep(
+          { project_root, record_state } as StateInputs,
+          "usage_rights",
+          {
+            status: "generated",
+            generated: [{ what: "rights module, gate and resynchronization", stack }],
+            pending_backoffice: [
+              "Create and validate the notification webhook, so the resynchronization is actually " +
+                "called. scaffold_notification_endpoint returns that procedure.",
+            ],
+          },
+          {
+            segmentRef: configuration.segmentRef,
+            forbidden: secretsOf(configuration),
+            installation: {
+              stack,
+              ...(selected.length === 0
+                ? {}
+                : {
+                    gated_features: selected
+                      .map((feature) => feature.ReferenceFeature)
+                      .filter((reference): reference is string => typeof reference === "string"),
+                  }),
+            },
+          },
+        );
+        if (record !== undefined) sections.push("", record);
 
         return text(sections.join("\n"));
       }),

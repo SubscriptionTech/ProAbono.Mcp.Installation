@@ -5,6 +5,69 @@ All notable changes to `@proabono/mcp-installation` are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0]
+
+**The In-Site installation is complete.** Seven tools land together, and with them the last gap the
+previous versions shipped with: `sync_usage_rights` no longer tells you its webhook
+resynchronization is missing, because it generates it.
+
+A minor, not a major: nothing is removed and nothing is renamed. A `0.2.x` call still works.
+
+### Added
+
+- **`install_insite`** — the orchestrator. It detects the stack from the open project and states a
+  hypothesis rather than deciding, settles the Segment, and checks four prerequisites **before**
+  generating anything: an authenticated customer area, a catalogue whose offers carry Features, how
+  a ProAbono customer comes to exist for a signed-in user, and a page to host the portal. An offer
+  carrying no Feature blocks the installation exactly as no offer at all would — the subscription
+  succeeds and the application gets no rights back, which is indistinguishable from a broken
+  integration. It installs one way, In-Site by code, whatever the detected stack would lend itself
+  to.
+- **`installation_status`** — reads `.proabono/installation.json` back: which steps are done, which
+  were generated but not confirmed in place, which were skipped, what was generated where, and what
+  is still owed in the BackOffice. A project that was never installed is reported as such.
+- **The installation state**, `.proabono/installation.json`, written into the project and meant to
+  be committed. It carries **no credential** — enforced on every write, by value and by field name,
+  not left to the caller. Four states per step, because `generated` is not `done`: a generator hands
+  back code, it does not paste it. Every tool that generates a step records it, not only the
+  orchestrator, so a hand-driven installation reports as half installed rather than as untouched.
+  `record_state: false` writes nothing at all.
+- **`link_subscription_workflow`** — In-Site step 2, the round trip. The server-side fetch that
+  reads an encrypted query out of an object's `Links` **by `rel`** and handles its absence rather
+  than fabricating a URL, both ways of opening it (`ProAbonoPortal.open({ query })` and a
+  `?pa_query=` link for e-mails), and **one** return route that re-reads the session user's rights
+  before branching on `from` × `outcome` — all five outcomes, including the ones a merchant has no
+  case for today. `idc`, `refo` and `idsub` are treated as what they are: browser-supplied.
+  `terminate` revokes nothing, because it takes effect at period end and can still be cancelled.
+- **`scaffold_notification_endpoint`** — the webhook endpoint, with the signature verified in
+  constant time, the validation handshake told apart from an event by its missing `TypeTrigger`,
+  deduplication on the notification `Id` (never on `x-proabono-key`, which is identical on every
+  delivery), a fast acknowledgement with the work done out of band, and one global resynchronization
+  per affected customer taken from `Customer.ReferenceCustomer` — never `CustomerBuyer`, who pays
+  and holds no rights. Payment, charging and invoice events are deliberately kept off that path.
+  Plus the BackOffice procedure that creates and validates the webhook, which no API can perform.
+- **`verify_insite_installation`** — exercises steps 2 and 3 against the account, checks the
+  go-live rules statically against your own files, reports what no API can read back as pending
+  rather than claiming it, and ends with the twelve-item go-live checklist. It never calls verified
+  what it did not exercise, and a static check that cannot conclude says `unknown` rather than
+  passing.
+- **`plan_integration`** — the ordered plan for a journey: the In-Site installation, a subscription
+  funnel, the portal lifecycle, usage metering, notifications. For the installation it renders the
+  same sequence `install_insite` runs, from one description, so the two cannot answer differently.
+- **`generate_integration_code`** — code for a task in the language you name, from the contract and
+  the documentation corpus. Where a task-specific generator covers the task it says so and names it
+  instead of quietly replacing it. An unrecognised language is answered with the HTTP calls and told
+  to be unrecognised, never with another language's code.
+
+### Changed
+
+- **`sync_usage_rights` generates the resynchronization** the webhook calls, in every stack, and no
+  longer states that it does not. The maximum TTL stays: the webhook invalidates regardless of
+  expiry, and the ceiling is what bounds a revoked right while the webhook is not yet validated in
+  the BackOffice, or when a delivery never arrives.
+- `install_customer_portal` records its step in the installation state, like every other generator.
+- The README's tool list carries the complete catalogue, and no longer describes a subset.
+
 ## [0.2.5]
 
 ### Fixed
@@ -231,6 +294,7 @@ First release.
 - **Server introspection**: `get_server_info`, reporting the version and which environment variables
   are configured, never their values.
 
+[0.3.0]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
 [0.2.5]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
 [0.2.4]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
 [0.2.3]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD

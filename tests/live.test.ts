@@ -18,11 +18,19 @@
  * reference actually gives on `/v1/Customers`.
  */
 import assert from "node:assert/strict";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
+
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 
 import { ProAbonoClient } from "../src/api/client.js";
 import { ProAbonoApiError } from "../src/api/errors.js";
 import { loadConfiguration, type ProAbonoConfiguration } from "../src/config.js";
+import { readState } from "../src/install/state.js";
+import { createServer } from "../src/server.js";
 
 const CONFIGURED = [
   "PROABONO_API_BASE",
@@ -326,6 +334,161 @@ live("live anonymization, on customers created for it alone", () => {
     assert.ok(
       anonymized.Email === undefined || anonymized.Email === null || !anonymized.Email.includes(RUN),
       "the email survived anonymization",
+    );
+  });
+});
+
+/**
+ * The In-Site journey, through the tools rather than through raw calls.
+ *
+ * This is the lane the offline suite cannot stand in for: `verify_insite_installation` claims that
+ * a workflow query comes back and that rights are readable, and both claims are about a live
+ * account. What it exercises is steps 2 and 3 end to end -- the object fetch that carries the
+ * `insite-*` query, and the Usage read behind it -- on a customer created for this lane alone.
+ *
+ * It runs the server the way a client does: over an in-memory transport, with the live API client
+ * behind it. A tool that answered correctly only when called directly would pass a unit test and
+ * fail a developer.
+ */
+live("live In-Site journey, through the tools", () => {
+  let configuration: ProAbonoConfiguration;
+  let client: ProAbonoClient;
+  let offerRef: string;
+  let outsideBaseline: number;
+  const customerRef = `${RUN}-insite`;
+  const projectRoot = mkdtempSync(join(tmpdir(), "proabono-live-insite-"));
+
+  before(async () => {
+    configuration = loadConfiguration();
+    client = new ProAbonoClient(configuration);
+
+    const offers = await client.listAll<{ ReferenceOffer?: string; Features?: unknown[] }>(
+      "/v1/Offers",
+      {},
+    );
+    const usable = offers.find((offer) => (offer.Features ?? []).length > 0);
+    assert.ok(usable?.ReferenceOffer !== undefined, "the fixture needs an Offer carrying a Feature");
+    offerRef = usable.ReferenceOffer;
+
+    outsideBaseline = await customersOutsideTheLane(configuration);
+
+    await client.post("/v1/Customer", {
+      body: {
+        ReferenceCustomer: customerRef,
+        ReferenceSegment: configuration.segmentRef,
+        Email: `${RUN}-insite@example.test`,
+      },
+    });
+    await client.post("/v1/Subscription", {
+      query: { TryStart: true },
+      body: { ReferenceCustomer: customerRef, ReferenceOffer: offerRef },
+    });
+  });
+
+  /** The server as a client sees it, with the live API behind it. */
+  async function connected() {
+    const server = createServer(configuration, { client });
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    const mcp = new Client({ name: "live", version: "0" });
+    await Promise.all([mcp.connect(clientTransport), server.connect(serverTransport)]);
+    return mcp;
+  }
+
+  function textOf(result: unknown): string {
+    return (result as { content: { text?: string }[] }).content
+      .map((block) => block.text ?? "")
+      .join("\n");
+  }
+
+  it("reads a workflow query out of the customer's Links", async () => {
+    const customer = await client.get<{ Links?: { rel?: string; query?: string }[] }>(
+      "/v1/Customer",
+      { ReferenceCustomer: customerRef, ReferenceOffer: offerRef },
+    );
+
+    const rels = (customer.Links ?? []).map((link) => link.rel);
+    const insite = rels.filter((rel) => rel?.startsWith("insite-"));
+
+    if (insite.length === 0) {
+      // The fixture, not the code: every insite-* link is built on the Segment's In-Site
+      // installation URL, which is a BackOffice setting (Spec-test-account.md, setup item 6).
+      process.stderr.write(
+        `live: customer ${customerRef} carries no insite-* link (rels: ${rels.join(", ") || "none"}). ` +
+          `The Segment has no In-Site installation URL configured, so step 2 cannot be exercised ` +
+          `here -- see setup item 6 of Spec-test-account.md.\n`,
+      );
+      return;
+    }
+
+    const withQuery = (customer.Links ?? []).filter((link) => typeof link.query === "string");
+    assert.ok(
+      withQuery.length > 0,
+      `the customer publishes ${insite.join(", ")} but not one of them carries an encrypted ` +
+        `query, which is what a workflow is opened with`,
+    );
+  });
+
+  it("verifies steps 2 and 3 through verify_insite_installation", async () => {
+    const mcp = await connected();
+
+    const answer = textOf(
+      await mcp.callTool({
+        name: "verify_insite_installation",
+        arguments: { customer_ref: customerRef, offer_ref: offerRef, project_root: projectRoot },
+      }),
+    );
+
+    // A started subscription on an Offer carrying a Feature must produce rights. If it does not,
+    // the tool must still name which of the three causes applies rather than reporting "no rights".
+    assert.match(
+      answer,
+      /\*\*Step 3 — verified\.\*\*|cause [123]/,
+      "the verification neither confirmed the rights read nor diagnosed why it was empty",
+    );
+    assert.match(answer, /^12\. The portal is reachable/m, "the go-live checklist is missing");
+
+    // No secret, ever, in what a tool returns -- including the one that reads the project's files.
+    for (const secret of [
+      configuration.agentKey,
+      configuration.apiKey,
+      configuration.portalSecret,
+      configuration.webhookSecret,
+    ]) {
+      assert.ok(!answer.includes(secret), "a credential reached the verification output");
+    }
+  });
+
+  it("records an installation state that carries no credential", async () => {
+    const mcp = await connected();
+
+    await mcp.callTool({
+      name: "sync_usage_rights",
+      arguments: { stack: "node-express", customer_ref: customerRef, project_root: projectRoot },
+    });
+
+    const state = readState(projectRoot);
+    assert.equal(state?.steps.usage_rights?.status, "generated");
+    assert.equal(state?.segment_ref, configuration.segmentRef);
+
+    const raw = JSON.stringify(state);
+    for (const secret of [
+      configuration.agentKey,
+      configuration.apiKey,
+      configuration.portalSecret,
+      configuration.webhookSecret,
+    ]) {
+      assert.ok(!raw.includes(secret), "a credential reached the installation state");
+    }
+  });
+
+  // The same tripwire as the other lanes: this one creates a customer and a subscription, and a
+  // dropped ReferenceSegment would land them in the Business's default Segment without any error.
+  after(async () => {
+    const found = await customersOutsideTheLane(configuration);
+    assert.ok(
+      found <= outsideBaseline,
+      `${found - outsideBaseline} customer(s) appeared outside Segment ` +
+        `${configuration.segmentRef} during the In-Site lane.`,
     );
   });
 });

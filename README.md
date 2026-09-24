@@ -10,13 +10,12 @@ It runs locally, over stdio, against whatever account your key opens. It has no 
 
 The version you installed is in [CHANGELOG.md](CHANGELOG.md), and `get_server_info` reports it:
 
-- **Step 1 — Customer Portal**: generates the in-site embed, security hash included.
-- **Step 3 — rights synchronization**: generates the code that reads a customer's rights from the Usage API, caches them with a correct expiry and gates access on them.
+- **The three In-Site steps**, end to end: the Customer Portal embed with its security hash, the Subscription Workflow round trip, and the rights synchronization with its cache, its gate and its resynchronization.
+- **The notification endpoint**, with signature verification, deduplication and the BackOffice procedure that activates it.
+- **Verification**: steps 2 and 3 exercised against your account, the go-live rules checked against your own files, and the twelve-item checklist.
 - **Catalogue and account introspection**: offers, features, customers, subscriptions, usage, invoices.
 - **Writes across the lifecycle**: customers and their settings, billing addresses, subscriptions and each of their four transitions, Usage writes for all three Feature types, balance lines and billing.
 - **Documentation and API reference**: natural-language search over the ProAbono corpus and the Live OpenAPI contract.
-
-Not in this version, and planned: **Step 2 — Subscription Workflow** code generation, the notification-endpoint scaffold (and with it the webhook resynchronization that `sync_usage_rights` leaves out), the `install_insite` orchestrator, installation-state tracking, end-to-end installation verification, and the generic `plan_integration` / `generate_integration_code` pair.
 
 Widget and plug-in installations (WordPress and similar) are out of scope by design: this server installs ProAbono **in-site, by code**.
 
@@ -107,10 +106,19 @@ Point your keys at a **Sandbox** account to run this. Step 4 writes nothing, but
 - `search_documentation` — natural-language search across the ProAbono documentation and the Live OpenAPI contract.
 - `get_api_reference` — parameters and schema for a given endpoint or object.
 
-**Code generation**
+**Installation**
+- `install_insite` — the whole In-Site installation, end to end: stack detection, the prerequisites gate, the three steps in order, and the progress recorded in `.proabono/installation.json`.
+- `installation_status` — where the installation stands: what is done, what was generated where, what is pending in the BackOffice, what was skipped.
 - `install_customer_portal` — the Step 1 in-site embed, with the security hash, for your stack.
+- `link_subscription_workflow` — Step 2: the encrypted query read from `Links`, both ways of opening a workflow, and the single return route covering all five outcomes.
+- `sync_usage_rights` — the Step 3 rights module: the Usage read, the cache and its expiry, the gate, the write-back for a Feature your application changes, and the resynchronization.
+- `scaffold_notification_endpoint` — the webhook endpoint: signature verification, the validation handshake, deduplication, a fast acknowledgement, and the BackOffice procedure that activates it.
+- `verify_insite_installation` — steps 2 and 3 exercised against your account, the go-live rules checked against your files, and the twelve-item checklist.
+
+**Code generation**
 - `generate_pricing_table` — a pricing table over your real offers.
-- `sync_usage_rights` — the Step 3 rights module: the Usage read, the cache and its expiry, the gate, and the write-back for a Feature your application changes.
+- `plan_integration` — the ordered plan for a journey: installation, subscription funnel, portal lifecycle, usage metering, notifications.
+- `generate_integration_code` — code for a task in the language you name, from the contract and the documentation.
 
 **Catalogue**
 - `list_offers` — the offers your segment exposes.

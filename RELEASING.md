@@ -13,10 +13,30 @@ that what can fail, fails *before* npm accepts a tarball.
 ## What you need
 
 - **Write access to this repository**, to push a tag.
-- **Nothing else to *publish* to npm.** Publishing uses **trusted publishing**: npmjs.com holds a
-  trusted publisher for `@proabono/mcp-installation` naming this repository and the workflow file
-  `release.yml`, and the npm CLI authenticates from the OIDC token that GitHub Actions mints. There
-  is no npm token to hold, rotate or expire.
+- **A trusted publisher configured on npmjs.com**, and it is the one thing to check before tagging.
+  Publishing uses **trusted publishing**: the npm CLI authenticates from the OIDC token GitHub
+  Actions mints, and npmjs.com must hold a trusted publisher for `@proabono/mcp-installation` naming
+  **this** repository (`SubscriptionTech/ProAbono.Mcp.Installation`) and the workflow file
+  `release.yml`. There is no npm token to hold, rotate or expire — and nothing to fall back on
+  either.
+
+  **It has never successfully published.** `0.1.0`, the last version on npm, was published by the
+  earlier token-based workflow; the trusted-publishing change landed *after* that tag. The first run
+  under it, `v0.2.5` on 2026-09-24, signed its provenance statement and then failed at the upload:
+
+  ```
+  npm error 404 Not Found - PUT https://registry.npmjs.org/@proabono%2fmcp-installation
+  npm error 404 The requested resource '@proabono/mcp-installation@0.2.5' could not be found or
+  npm error 404 you do not have permission to access it.
+  ```
+
+  A `404` on the `PUT` is npm's answer to an unauthenticated or unauthorised publish, not to a
+  missing package — the package exists and is public. The OIDC half works (the provenance statement
+  reached the transparency log), so what is left is the trusted publisher itself: absent, or naming
+  another repository. `0.0.1` was published from the *workspace* repository, which is the obvious
+  candidate for a stale entry. Check it under **Settings → Trusted publisher** on the npm package
+  page before tagging, and re-run the failed job rather than re-tagging — nothing was uploaded and
+  the version is intact.
 - **An npm login as a maintainer of `@proabono`**, for step 5 only. Deprecating a superseded version
   is a metadata change on the published package, and it runs from your machine, not from CI:
   `npm whoami` must answer. Nothing else in this procedure needs it.
