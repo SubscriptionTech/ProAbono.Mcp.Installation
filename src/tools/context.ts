@@ -19,9 +19,30 @@ export interface ToolResult {
   isError?: boolean;
 }
 
-/** A tool answer carrying structured data. */
+/**
+ * A tool answer carrying structured data.
+ *
+ * `undefined` is handled rather than stringified: the API answers `204 No Content` with an empty
+ * body where there is nothing to return, and `JSON.stringify(undefined)` is `undefined`, not a
+ * string -- which would put a `text` block with no text on the wire and break the client rather
+ * than tell the developer the record is empty.
+ */
 export function json(value: unknown): ToolResult {
-  return { content: [{ type: "text", text: JSON.stringify(value, null, 2) }] };
+  const text =
+    value === undefined
+      ? JSON.stringify(
+          {
+            result: "empty",
+            note:
+              "The ProAbono API answered 204 No Content: the record or collection asked for holds " +
+              "nothing. That is an answer, not a failure -- and not proof of a broken integration.",
+          },
+          null,
+          2,
+        )
+      : JSON.stringify(value, null, 2);
+
+  return { content: [{ type: "text", text }] };
 }
 
 /** A tool answer carrying prose or generated code. */

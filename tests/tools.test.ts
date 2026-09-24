@@ -86,7 +86,7 @@ const WRITES = [
   "bill_customer",
 ];
 
-async function connect(responses: readonly { status?: number; body: unknown }[]) {
+async function connect(responses: readonly { status?: number; body?: unknown }[]) {
   const recorder = recordFetch(responses);
   const server = createServer(TEST_CONFIGURATION, {
     client: new ProAbonoClient(TEST_CONFIGURATION, { fetchImplementation: recorder.fetch }),
@@ -211,7 +211,7 @@ describe("the exposed tool surface", () => {
     const registered = (await client.listTools()).tools.map((tool) => tool.name);
     const whole = readFileSync(new URL("../../README.md", import.meta.url), "utf8");
 
-    // Only the `## Tools` section. The "Early version" prose above it deliberately names tools
+    // Only the `## Tools` section. The "What it covers today" prose above it deliberately names tools
     // that are *not* in this version, which is exactly what a reader needs and what a check over
     // the whole file would flag.
     const start = whole.indexOf("\n## Tools\n");
@@ -957,5 +957,82 @@ describe("the generator tools", () => {
     );
 
     assert.match(answer, /earliest `DatePeriodEnd` is 2026-10-01/);
+  });
+});
+
+/**
+ * The empty collection, which is `204 No Content` and not `200 { TotalItems: 0 }`.
+ *
+ * This shipped broken in `0.1.0` and survived the whole catalogue release: the recorder always
+ * produced a JSON body, so every offline test exercised a shape the API does not send for an empty
+ * collection. Reading `.Items` off nothing threw a TypeError, which turned the most ordinary state
+ * in the product -- a customer who has nothing yet -- into a crash. A live run found it in one
+ * call.
+ *
+ * The rights diagnosis is the case that matters most: `sync_usage_rights` exists to tell the three
+ * causes of an empty `Usages` response apart, and it could not reach any of them, because reading
+ * the empty response is what crashed.
+ */
+describe("an empty collection", () => {
+  it("reads as zero items, not as a crash", async () => {
+    const { client } = await connect([{ status: 204 }]);
+
+    const answer = textOf(
+      await client.callTool({ name: "list_subscriptions", arguments: { customer_ref: "cust-new" } }),
+    );
+
+    assert.match(answer, /"count": 0/);
+  });
+
+  it("lets get_usages diagnose a customer who has nothing yet", async () => {
+    const { client } = await connect([{ status: 204 }]);
+
+    const result = await client.callTool({
+      name: "get_usages",
+      arguments: { customer_ref: "cust-new" },
+    });
+
+    assert.ok(!isError(result));
+    assert.match(textOf(result), /No Usage came back/);
+  });
+
+  it("lets sync_usage_rights reach cause 1 instead of crashing on the way", async () => {
+    // Features, Usages, Subscriptions -- every one of them empty, which is a brand-new account
+    // looked at by a brand-new customer.
+    const { client } = await connect([{ status: 204 }]);
+
+    const result = await client.callTool({
+      name: "sync_usage_rights",
+      arguments: { stack: "node-express", customer_ref: "cust-new" },
+    });
+
+    assert.ok(!isError(result));
+    assert.match(textOf(result), /\*\*cause 1\*\*/);
+  });
+
+  it("reports an empty single record rather than returning no text at all", async () => {
+    const { client } = await connect([{ status: 204 }]);
+
+    const result = await client.callTool({
+      name: "get_payment_settings",
+      arguments: { customer_ref: "cust-new" },
+    });
+
+    // `JSON.stringify(undefined)` is `undefined`, not a string: unguarded, this put a text block
+    // with no text on the wire.
+    const blocks = (result as { content: { text?: string }[] }).content;
+    assert.ok(blocks.every((block) => typeof block.text === "string" && block.text.length > 0));
+    assert.match(textOf(result), /204 No Content/);
+  });
+
+  it("is handled by the generated code of every stack", async () => {
+    const { client } = await connect([{ status: 204 }]);
+
+    for (const stack of ["node-express", "php", "python", "ruby", "csharp", "generic"]) {
+      const answer = textOf(
+        await client.callTool({ name: "sync_usage_rights", arguments: { stack } }),
+      );
+      assert.match(answer, /204/, `the ${stack} module says nothing about a 204 empty collection`);
+    }
   });
 });

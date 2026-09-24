@@ -13,7 +13,9 @@
  *
  * Both end on the default-Segment tripwire. `ReferenceSegment` is optional on every operation, so
  * a dropped reference does not raise an error -- it silently acts on the Business's default
- * Segment. Asserting that nothing appeared there is the only way to observe that bug.
+ * Segment. Asserting that nothing appeared there is the only way to observe that bug, and
+ * `customersOutsideTheLane` below is written so the assertion holds whichever scope an omitted
+ * reference actually gives on `/v1/Customers`.
  */
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
@@ -47,7 +49,7 @@ live("live journey against the fixture account", () => {
   let configuration: ProAbonoConfiguration;
   let client: ProAbonoClient;
   let offerRef: string;
-  let defaultSegmentBaseline: number;
+  let outsideBaseline: number;
 
   before(async () => {
     configuration = loadConfiguration();
@@ -67,7 +69,7 @@ live("live journey against the fixture account", () => {
     );
     offerRef = usable.ReferenceOffer;
 
-    defaultSegmentBaseline = await countInDefaultSegment(configuration);
+    outsideBaseline = await customersOutsideTheLane(configuration);
   });
 
   it("upserts a customer through the one endpoint that creates and updates", async () => {
@@ -134,6 +136,14 @@ live("live journey against the fixture account", () => {
       query: { ReferenceCustomer: customerRef },
       body: { FirstName: "MCP", LastName: "Suite", City: "Paris", Country: "FR" },
     });
+    // Billing refuses a customer with no payment settings -- `403
+    // Error.Customer.PaymentSettings.Missing` -- and `ForceOffline: true` does not waive it. A
+    // billing address is not a substitute: this customer has one, and the first live run failed
+    // here all the same. `ExternalBank` is the type the API accepts with no gateway behind it.
+    await client.post("/v1/CustomerSettingsPayment", {
+      query: { ReferenceCustomer: customerRef },
+      body: { TypePayment: "ExternalBank" },
+    });
 
     const subscription = await client.post<{ Id?: number }>("/v1/Subscription", {
       query: { TryStart: true },
@@ -193,12 +203,12 @@ live("live journey against the fixture account", () => {
   });
 
   after(async () => {
-    const found = await countInDefaultSegment(configuration);
-    assert.equal(
-      found,
-      defaultSegmentBaseline,
-      `${found - defaultSegmentBaseline} customer(s) appeared in the Business's default Segment. ` +
-        `A ReferenceSegment was dropped somewhere: the call succeeded against the wrong Segment.`,
+    const found = await customersOutsideTheLane(configuration);
+    assert.ok(
+      found <= outsideBaseline,
+      `${found - outsideBaseline} customer(s) appeared outside Segment ` +
+        `${configuration.segmentRef}. A ReferenceSegment was dropped somewhere: the call ` +
+        `succeeded against the Business's default Segment instead.`,
     );
   });
 });
@@ -224,6 +234,11 @@ live("live anonymization, on a customer created for it alone", () => {
         Email: `${RUN}-gdpr@example.test`,
         Name: "To be erased",
       },
+    });
+    // Same precondition as the journey lane: nothing is billable without payment settings.
+    await client.post("/v1/CustomerSettingsPayment", {
+      query: { ReferenceCustomer: customerRef },
+      body: { TypePayment: "ExternalBank" },
     });
     await client.post("/v1/BalanceLine", {
       body: { ReferenceCustomer: customerRef, Amount: 500, Label: "GDPR lane", Quantity: 1 },
@@ -259,9 +274,40 @@ live("live anonymization, on a customer created for it alone", () => {
   });
 });
 
-/** Counts customers in the default Segment, by deliberately omitting `ReferenceSegment`. */
-async function countInDefaultSegment(configuration: ProAbonoConfiguration): Promise<number> {
-  const response = await fetch(`${configuration.apiBase}/v1/Customers?SizePage=0`, {
+/**
+ * How many customers the omitted-reference read sees that the lane's own Segment does not.
+ *
+ * The tripwire cannot be a bare count, because what `GET /v1/Customers` answers with
+ * `ReferenceSegment` omitted is **unconfirmed**: the contract does not say whether it is the
+ * Business's default Segment or the whole Business. Both readings fit the `5 !== 2` the first live
+ * run reported, and a check that cannot tell them apart cannot tell a dropped reference from its
+ * own blind spot.
+ *
+ * The difference between the two counts is unambiguous either way:
+ *
+ *  - omitted = the whole Business -- a customer created in the lane raises both counts, so the
+ *    difference is unchanged; one created against the default Segment raises the first alone.
+ *  - omitted = the default Segment -- a customer created in the lane raises the second alone, so
+ *    the difference falls; one created against the default Segment raises the first alone.
+ *
+ * In both readings the bug raises the difference and correct behaviour never does, which is why
+ * the caller asserts that it does not increase rather than that it is equal.
+ */
+async function customersOutsideTheLane(configuration: ProAbonoConfiguration): Promise<number> {
+  const omitted = await countCustomers(configuration, undefined);
+  const configured = await countCustomers(configuration, configuration.segmentRef);
+  return omitted - configured;
+}
+
+async function countCustomers(
+  configuration: ProAbonoConfiguration,
+  segmentRef: string | undefined,
+): Promise<number> {
+  const url = new URL(`${configuration.apiBase}/v1/Customers`);
+  url.searchParams.set("SizePage", "0");
+  if (segmentRef !== undefined) url.searchParams.set("ReferenceSegment", segmentRef);
+
+  const response = await fetch(url, {
     headers: {
       Authorization: `Basic ${Buffer.from(
         `${configuration.agentKey}:${configuration.apiKey}`,
@@ -270,6 +316,9 @@ async function countInDefaultSegment(configuration: ProAbonoConfiguration): Prom
       Accept: "application/json",
     },
   });
+
+  // An empty collection is `204 No Content` with no body at all; `.json()` throws on it.
+  if (response.status === 204) return 0;
 
   const payload = (await response.json()) as { TotalItems?: number };
   return payload.TotalItems ?? 0;

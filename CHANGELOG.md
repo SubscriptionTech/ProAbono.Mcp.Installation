@@ -5,6 +5,32 @@ All notable changes to `@proabono/mcp-installation` are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3]
+
+### Fixed
+
+- **An empty collection no longer crashes the tool that reads it.** ProAbono answers a collection
+  with nothing in it as `204 No Content` and **no body at all**, not as a `200` carrying
+  `TotalItems: 0`. Reading `.Items` off that threw a `TypeError`, so the most ordinary state in the
+  product -- a customer who has nothing yet -- came back as a crash: no subscriptions, no invoices,
+  and above all no Usages, which is the case `sync_usage_rights` exists to diagnose. It could not
+  reach any of its three causes, because reading the empty response is what failed.
+- **A single record that is empty is reported as empty**, rather than put on the wire as a text
+  block with no text: `JSON.stringify(undefined)` is `undefined`, not a string.
+- **The generated rights module handles the 204 in every stack** -- Node, PHP, Python, Ruby, C# and
+  the generic sketch. Each returns an empty rights set instead of parsing a body that is not there.
+
+### Changed
+
+- The live lanes write payment settings on a customer before billing it. `POST
+  /v1/Billing/Customer` answers `403 Error.Customer.PaymentSettings.Missing` without them, and
+  `ForceOffline: true` does not waive that -- a billing address is not a substitute.
+- The default-Segment tripwire no longer compares a bare customer count with itself. What
+  `GET /v1/Customers` returns with `ReferenceSegment` omitted -- the default Segment, or the whole
+  Business -- is not stated by the contract, and the old check could not tell a dropped reference
+  from its own blind spot. It now counts twice, with and without the reference, and asserts their
+  difference does not grow, which catches the bug under either reading.
+
 ## [0.2.2]
 
 ### Added
@@ -174,6 +200,7 @@ First release.
 - **Server introspection**: `get_server_info`, reporting the version and which environment variables
   are configured, never their values.
 
+[0.2.3]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
 [0.2.2]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
 [0.2.1]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
 [0.2.0]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD

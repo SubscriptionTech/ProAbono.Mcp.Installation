@@ -47,7 +47,7 @@ export interface FetchRecorder {
  * perfectly valid response against the wrong Segment, so asserting on responses cannot see it.
  */
 export function recordFetch(
-  responses: readonly { status?: number; body: unknown }[],
+  responses: readonly { status?: number; body?: unknown }[],
 ): FetchRecorder {
   const requests: RecordedRequest[] = [];
   let index = 0;
@@ -68,8 +68,17 @@ export function recordFetch(
     const canned = responses[Math.min(index, responses.length - 1)];
     index += 1;
 
-    return new Response(JSON.stringify(canned?.body ?? {}), {
-      status: canned?.status ?? 200,
+    const status = canned?.status ?? 200;
+
+    // ProAbono answers an EMPTY collection with `204 No Content` and no body at all -- not with a
+    // `200` carrying `TotalItems: 0`. A recorder that always produced a JSON body could not
+    // express that, which is why the crash it caused reached a live account before a test saw it.
+    if (status === 204 || canned?.body === undefined) {
+      return new Response(null, { status: status === 200 ? 204 : status });
+    }
+
+    return new Response(JSON.stringify(canned.body), {
+      status,
       headers: { "Content-Type": "application/json" },
     });
   }) as unknown as typeof fetch;

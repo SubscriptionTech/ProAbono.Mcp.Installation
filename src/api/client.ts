@@ -71,13 +71,18 @@ export class ProAbonoClient {
     let page = 1;
 
     for (;;) {
-      const response = await this.request<PaginatedResponse<T>>("get", path, {
+      const response = await this.request<PaginatedResponse<T> | undefined>("get", path, {
         query: { ...query, Page: page, SizePage: PAGE_SIZE },
       });
-      const batch = response.Items ?? [];
+
+      // An empty collection comes back as `204 No Content` with no body at all -- not as a `200`
+      // carrying `TotalItems: 0`. Reading `.Items` off that threw, which turned every legitimate
+      // "this customer has nothing yet" into a crash: no subscriptions, no invoices, and above all
+      // no Usages, which is the case the whole rights diagnosis is built to explain.
+      const batch = response?.Items ?? [];
       items.push(...batch);
 
-      const total = response.TotalItems ?? items.length;
+      const total = response?.TotalItems ?? items.length;
       if (items.length >= total || batch.length === 0) return items;
 
       page += 1;

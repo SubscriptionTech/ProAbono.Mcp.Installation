@@ -6,10 +6,9 @@ It gives your coding assistant the ProAbono documentation, the API Live and *you
 
 It runs locally, over stdio, against whatever account your key opens. It has no environment concept of its own: your credentials are the only boundary.
 
-## Early version
+## What it covers today
 
-**This is an early release.** What it does today — the version you installed is in
-[CHANGELOG.md](CHANGELOG.md), and `get_server_info` reports it:
+The version you installed is in [CHANGELOG.md](CHANGELOG.md), and `get_server_info` reports it:
 
 - **Step 1 — Customer Portal**: generates the in-site embed, security hash included.
 - **Step 3 — rights synchronization**: generates the code that reads a customer's rights from the Usage API, caches them with a correct expiry and gates access on them.
@@ -81,6 +80,26 @@ All seven are in your ProAbono BackOffice. Set them in the environment that laun
 **Do not put them in a configuration file you commit.** Claude Code's `.mcp.json` expands `${PROABONO_API_KEY}`, and VS Code's `mcp.json` can prompt for them through its `inputs` section; both keep the values out of the file. Cursor supports neither, so on Cursor let the server inherit them from your environment rather than writing them into `env`.
 
 No value you supply is ever logged, returned by a tool, put in an error message, or inlined into generated code. Generated code references the variable names.
+
+## First prompt
+
+With the server added and the seven variables set, paste this into your assistant:
+
+```text
+Help me install ProAbono in this project. Do the following:
+
+1. Call get_server_info to confirm the server is reachable, and tell me which version you are talking to.
+2. Review my project: the framework and language, where a signed-in user is identified, and how paid features are gated today.
+3. Read my catalogue with list_offers and list_features, and tell me what my segment sells and which features gate access.
+4. Generate the Customer Portal embed for my stack with install_customer_portal, and wire it into the page where my signed-in user is known.
+5. Suggest the most relevant next steps.
+
+Answer every question about the ProAbono API from search_documentation and get_api_reference, never from memory.
+```
+
+If the ProAbono tools are not there at all, the server refused to start: a variable is missing, and the error naming it is in your MCP client's log. `get_server_info` reports a complete configuration because it cannot run on anything else.
+
+Point your keys at a **Sandbox** account to run this. Step 4 writes nothing, but what usually follows it does: `create_update_customer`, `create_subscription` and the Usage writes create real data in whatever account your keys open.
 
 ## Tools
 
