@@ -1,17 +1,30 @@
 # Install, build, type-check and test on every push and pull request.
 #
-# A red build blocks a release -- see RELEASING.md. The live lane of the test suite is skipped here:
-# it needs the fixture account's credentials, which are not available to a pull request from a fork.
+# A red build blocks a release -- see RELEASING.md.
 #
-# The job needs no credential of its own. Both sources the build vendors -- the API Live contract
-# and the documentation corpus -- are committed under resources/, so a fork's pull request builds like
-# any other run.
+# Two lanes, in two jobs, because they need opposite things:
+#
+#   - `build` and `release path` need NO credential. Both sources the build vendors -- the API Live
+#     contract and the documentation corpus -- are committed under resources/, so a fork's pull
+#     request builds like any other run. The live lanes of the suite skip themselves when the seven
+#     variables are absent, which is what makes the same `npm test` the offline suite here.
+#   - `live` runs that same `npm test` WITH the fixture account's credentials, so the live lanes
+#     run instead of skipping. It is restricted to a push to main of this repository, plus a manual
+#     dispatch.
+#
+# The live job is kept off pull requests deliberately, and it is a security decision rather than a
+# convenience: a pull request from a fork runs code this repository has not reviewed, and any
+# workflow handing it these secrets hands it the fixture Business's agent key and API key.
+# `pull_request_target`, which would give a fork's branch access to them, is never used here. The
+# cost is accepted -- a live regression surfaces on the merge commit rather than on the branch that
+# introduced it.
 name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -38,6 +51,45 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
       - run: npm test
+
+  # The same `npm test` as `build`, but with the fixture account in the environment, so the live
+  # lanes run instead of skipping themselves. See Spec-test-account.md in the internal workspace
+  # repository for the account this expects and for the Segment it writes to.
+  #
+  # The guard is what keeps the secrets out of untrusted hands: never on a pull request, and the
+  # repository check makes the job a no-op in a fork, where the secrets do not exist anyway.
+  live:
+    name: live lanes
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.repository == 'SubscriptionTech/ProAbono.Mcp.Installation'
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: false
+          lfs: false
+
+      - uses: actions/setup-node@v7
+        with:
+          # One version is enough: this job proves the account contract holds, not the Node range,
+          # which the `build` matrix already covers.
+          node-version: 24.x
+          cache: npm
+
+      - run: npm ci
+
+      # The seven variables are declared on THIS step and on no other -- never on the job, never on
+      # `npm ci`. An install lifecycle script of any dependency, direct or transitive, reads the
+      # environment of the step it runs in, and `npm ci` runs them all.
+      - run: npm test
+        env:
+          PROABONO_API_BASE: ${{ secrets.PROABONO_API_BASE }}
+          PROABONO_BUSINESS_ID: ${{ secrets.PROABONO_BUSINESS_ID }}
+          PROABONO_SEGMENT_REF: ${{ secrets.PROABONO_SEGMENT_REF }}
+          PROABONO_AGENT_KEY: ${{ secrets.PROABONO_AGENT_KEY }}
+          PROABONO_API_KEY: ${{ secrets.PROABONO_API_KEY }}
+          PROABONO_PORTAL_SECRET: ${{ secrets.PROABONO_PORTAL_SECRET }}
+          PROABONO_WEBHOOK_SECRET: ${{ secrets.PROABONO_WEBHOOK_SECRET }}
 
   # `release.yml` only ever runs on a `v*` tag, so nothing else proves its setup still works until a
   # release is already under way. This job reproduces its `setup-node` configuration on every push

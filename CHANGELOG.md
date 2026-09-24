@@ -5,6 +5,18 @@ All notable changes to `@proabono/mcp-installation` are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2]
+
+### Added
+
+- **CI runs the live lanes**, in a `live` job of its own. It runs the same `npm test` as the build
+  matrix, with the fixture account's seven variables taken from repository secrets, so the lanes
+  that skip themselves without credentials run instead of skipping. It is restricted to a push to
+  `main` of this repository and to a manual dispatch: a pull request never reaches the secrets,
+  including one opened from a fork, and `pull_request_target` is not used. The variables are
+  declared on the `npm test` step alone -- declaring them on the job or on `npm ci` would hand them
+  to the install lifecycle script of every dependency.
+
 ## [0.2.1]
 
 Corrections to the catalogue of `0.2.0`, which was never published — the two sections are one
@@ -162,6 +174,7 @@ First release.
 - **Server introspection**: `get_server_info`, reporting the version and which environment variables
   are configured, never their values.
 
+[0.2.2]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
 [0.2.1]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
 [0.2.0]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.0.1...v0.1.0
