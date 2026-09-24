@@ -15,6 +15,9 @@ const ACTIONABLE: Record<string, string> = {
   "Error.Customer.PaymentSettings.Missing":
     "The customer has no payment method. Send them through the Customer Portal to add one before " +
     "retrying a billable change.",
+  "Error.Customer.Anonymize.HasDueInvoices":
+    "The customer still has at least one due invoice, and ProAbono will not erase a customer who " +
+    "owes something -- nothing was anonymized. Settle or cancel what is outstanding, then retry.",
   "Error.Customer.Billing.CappingReached":
     "The customer has too many outstanding payments; ProAbono is refusing further billable changes " +
     "until that clears.",

@@ -21,6 +21,7 @@ import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 
 import { ProAbonoClient } from "../src/api/client.js";
+import { ProAbonoApiError } from "../src/api/errors.js";
 import { loadConfiguration, type ProAbonoConfiguration } from "../src/config.js";
 
 const CONFIGURED = [
@@ -192,10 +193,31 @@ live("live journey against the fixture account", () => {
       { id: invoice.Id },
     );
     assert.equal(readBack.Id, invoice.Id);
-    assert.ok(
-      (readBack.Links ?? []).some((link) => link.rel === "insite-related-invoice"),
-      "the invoice must publish its PDF under the insite-related-invoice rel",
-    );
+
+    // The PDF link is asserted only where the account can produce `insite-*` links at all. Every
+    // one of them is built on the Segment's In-Site installation URL, configured in the BackOffice
+    // (Spec-test-account.md, setup item 6) and unreachable through the API -- so an invoice
+    // carrying NO insite link is a fixture that was never configured, not a product defect, and
+    // failing here would report the wrong thing. An invoice carrying some insite links but not the
+    // PDF one is a real defect, and that is what the assertion below catches.
+    const rels = (readBack.Links ?? []).map((link) => link.rel);
+    const insite = rels.filter((rel) => rel?.startsWith("insite-"));
+
+    if (insite.length === 0) {
+      process.stderr.write(
+        `live: invoice ${invoice.Id} carries no insite-* link at all (rels: ${rels.join(", ") || "none"}). ` +
+          `The Segment has no In-Site installation URL configured, so the PDF link cannot be ` +
+          `checked here -- see setup item 6 of Spec-test-account.md.
+`,
+      );
+    } else {
+      assert.ok(
+        insite.includes("insite-related-invoice"),
+        `the invoice publishes ${insite.join(", ")} but not its PDF under insite-related-invoice, ` +
+          `which is where get_invoice reads it and the one place it must never be rebuilt from the ` +
+          `invoice number`,
+      );
+    }
 
     await client.post("/v1/Subscription/{IdSubscription}/Termination", {
       query: { IdSubscription: subscription.Id, Immediate: true },
@@ -213,7 +235,7 @@ live("live journey against the fixture account", () => {
   });
 });
 
-live("live anonymization, on a customer created for it alone", () => {
+live("live anonymization, on customers created for it alone", () => {
   let configuration: ProAbonoConfiguration;
   let client: ProAbonoClient;
 
@@ -222,20 +244,24 @@ live("live anonymization, on a customer created for it alone", () => {
     client = new ProAbonoClient(configuration);
   });
 
-  // Anonymization cannot be undone, so this customer exists for this test and is used nowhere
-  // else. What is asserted is the half that matters: the personal data goes, the invoices stay.
-  it("erases the personal data and keeps the billing history", async () => {
-    const customerRef = `${RUN}-gdpr`;
+  /**
+   * Anonymization is refused while the customer owes something, which is the API's own guarantee
+   * that a GDPR erasure cannot orphan a due invoice. Discovered here on 2026-09-24: the contract
+   * documented no failure mode on this operation at all, and the lane that assumed there was none
+   * failed with `Error.Customer.Anonymize.HasDueInvoices`. The contract was fixed in
+   * `shared/ProAbonoLive` before this test was written.
+   */
+  it("is refused while a due invoice is outstanding, and erases nothing", async () => {
+    const customerRef = `${RUN}-gdpr-due`;
 
     await client.post("/v1/Customer", {
       body: {
         ReferenceCustomer: customerRef,
         ReferenceSegment: configuration.segmentRef,
-        Email: `${RUN}-gdpr@example.test`,
-        Name: "To be erased",
+        Email: `${RUN}-gdpr-due@example.test`,
+        Name: "Owes money",
       },
     });
-    // Same precondition as the journey lane: nothing is billable without payment settings.
     await client.post("/v1/CustomerSettingsPayment", {
       query: { ReferenceCustomer: customerRef },
       body: { TypePayment: "ExternalBank" },
@@ -247,29 +273,58 @@ live("live anonymization, on a customer created for it alone", () => {
       body: { ReferenceCustomer: customerRef, ForceOffline: true },
     });
 
-    const before_ = await client.listAll<{ Id?: number }>("/v1/Invoices", {
+    const invoices = await client.listAll<{ Id?: number }>("/v1/Invoices", {
       ReferenceCustomer: customerRef,
     });
-    assert.ok(before_.length > 0, "the lane needs an invoice to prove one survives");
+    assert.ok(invoices.length > 0, "the lane needs an invoice for the refusal to mean anything");
 
-    await client.post("/v1/Customer/Anonymization", { query: { ReferenceCustomer: customerRef } });
-
-    const anonymized = await client.get<{ Name?: string; Email?: string }>("/v1/Customer", {
-      ReferenceCustomer: customerRef,
-    });
-    assert.notEqual(anonymized.Name, "To be erased", "the name survived anonymization");
-    assert.ok(
-      anonymized.Email === undefined || anonymized.Email === null || !anonymized.Email.includes(RUN),
-      "the email survived anonymization",
+    await assert.rejects(
+      () => client.post("/v1/Customer/Anonymization", { query: { ReferenceCustomer: customerRef } }),
+      (error: unknown) => {
+        assert.ok(error instanceof ProAbonoApiError);
+        assert.equal(error.code, "Error.Customer.Anonymize.HasDueInvoices");
+        return true;
+      },
     );
+
+    // Refused means refused: the personal data is still there, and so is the invoice.
+    const still = await client.get<{ Name?: string }>("/v1/Customer", {
+      ReferenceCustomer: customerRef,
+    });
+    assert.equal(still.Name, "Owes money", "a refused anonymization erased data anyway");
 
     const after_ = await client.listAll<{ Id?: number }>("/v1/Invoices", {
       ReferenceCustomer: customerRef,
     });
-    assert.equal(
-      after_.length,
-      before_.length,
-      "anonymization destroyed billing history, which it must never do",
+    assert.equal(after_.length, invoices.length, "the invoice did not survive a refused erasure");
+  });
+
+  // Anonymization cannot be undone, so this customer exists for this test and is used nowhere
+  // else. What is asserted is the half that matters: the personal data goes, the record stays --
+  // anonymization is not a deletion, which is what invariant 3 admits it for.
+  it("erases the personal data and keeps the customer record", async () => {
+    const customerRef = `${RUN}-gdpr`;
+
+    const created = await client.post<{ Id?: number }>("/v1/Customer", {
+      body: {
+        ReferenceCustomer: customerRef,
+        ReferenceSegment: configuration.segmentRef,
+        Email: `${RUN}-gdpr@example.test`,
+        Name: "To be erased",
+      },
+    });
+
+    await client.post("/v1/Customer/Anonymization", { query: { ReferenceCustomer: customerRef } });
+
+    const anonymized = await client.get<{ Id?: number; Name?: string; Email?: string }>(
+      "/v1/Customer",
+      { ReferenceCustomer: customerRef },
+    );
+    assert.equal(anonymized.Id, created.Id, "anonymization replaced the record instead of clearing it");
+    assert.notEqual(anonymized.Name, "To be erased", "the name survived anonymization");
+    assert.ok(
+      anonymized.Email === undefined || anonymized.Email === null || !anonymized.Email.includes(RUN),
+      "the email survived anonymization",
     );
   });
 });

@@ -290,7 +290,8 @@ export function registerCustomerTools(server: McpServer, context: ToolContext): 
         "this server whose effect cannot be undone. Use it to serve an erasure request, never to " +
         "tidy up test data, and confirm with the developer that this is the customer they mean " +
         "before calling it -- the reference is the only thing identifying them, and a typo " +
-        "anonymizes somebody else.",
+        "anonymizes somebody else. ProAbono refuses the call while the customer still has a due " +
+        "invoice: settle or cancel what is outstanding first.",
       inputSchema: {
         customer_ref: z
           .string()

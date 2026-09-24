@@ -5,6 +5,26 @@ All notable changes to `@proabono/mcp-installation` are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.4]
+
+### Fixed
+
+- **`anonymize_customer` now says why ProAbono refused it.** The API answers `403
+  Error.Customer.Anonymize.HasDueInvoices` while the customer has a due invoice, and erases
+  nothing -- its own guarantee that a GDPR erasure cannot orphan what is owed. The tool carries
+  the advice (settle or cancel what is outstanding, then retry) instead of passing the bare code
+  through, and its description says so up front. The API Live contract documented no failure mode
+  on that operation at all; it was corrected at its source before this change.
+
+### Changed
+
+- The live anonymization lane asserts the refusal, and proves on a second customer that the record
+  itself survives an erasure. Anonymization is not a deletion, and that is what the lane now shows.
+- The live invoice check tells a missing fixture from a defect: an invoice carrying no `insite-*`
+  link at all means the Segment has no In-Site installation URL configured, which no code here can
+  repair; one carrying other `insite-*` links but not `insite-related-invoice` is a real defect and
+  still fails.
+
 ## [0.2.3]
 
 ### Fixed
@@ -200,6 +220,7 @@ First release.
 - **Server introspection**: `get_server_info`, reporting the version and which environment variables
   are configured, never their values.
 
+[0.2.4]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
 [0.2.3]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
 [0.2.2]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
 [0.2.1]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD

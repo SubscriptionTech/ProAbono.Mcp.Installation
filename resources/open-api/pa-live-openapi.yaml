@@ -205,7 +205,13 @@ paths:
     post:
       tags: [Customers]
       summary: Anonymize a customer
-      description: Anonymizes the customer's personal data (email, name). Used for GDPR erasure requests.
+      description: |
+        Anonymizes the customer's personal data (email, name). Used for GDPR erasure requests.
+
+        Refused while the customer still has a due invoice: the call answers `403` with
+        `Error.Customer.Anonymize.HasDueInvoices` and nothing is erased. Settle or cancel what is
+        outstanding first. Observed against a live account on 2026-09-24; the previous description
+        of this operation carried no failure mode at all.
       parameters:
         - name: ReferenceCustomer
           in: query
@@ -237,6 +243,17 @@ paths:
                     query: "<crypted-query-arg>"
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: |
+            Anonymization refused. `Error.Customer.Anonymize.HasDueInvoices` -- the customer has at
+            least one due invoice, and erasing them would orphan it.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                Code: "Error.Customer.Anonymize.HasDueInvoices"
+                Message: "Anonymization rejected - the Customer has at least one due invoice."
         "404":
           $ref: "#/components/responses/NotFound"
 
