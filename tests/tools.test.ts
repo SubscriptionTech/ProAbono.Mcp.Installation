@@ -605,6 +605,31 @@ describe("the invoicing tools", () => {
     assert.ok(textOf(result).includes(PDF));
   });
 
+  // The contract documents `insite-related-invoice`. A live account answered `related-invoice` on
+  // 2026-09-24, on an invoice whose other links carried their documented names -- so looking for
+  // the documented spelling alone meant reporting "no PDF link" about an invoice that publishes
+  // one. Both are accepted until the two agree, and both are pinned here.
+  it("takes the PDF URL from the rel the API actually publishes, not only the documented one", async () => {
+    const { client } = await connect([
+      {
+        body: {
+          Id: 1,
+          FullNumber: "S-7.00001673",
+          Links: [
+            { rel: "related-invoice", href: PDF, type: "application/pdf" },
+            { rel: "insite-charge", query: "<encrypted>" },
+          ],
+        },
+      },
+    ]);
+
+    const result = await client.callTool({ name: "get_invoice", arguments: { invoice_id: 1 } });
+    assert.ok(
+      textOf(result).includes(PDF),
+      "the PDF published under `related-invoice` was not found, so a real invoice reads as having none",
+    );
+  });
+
   it("says a document publishes no PDF rather than building a URL for it", async () => {
     const { client } = await connect([{ body: { Id: 1, Status: "Draft", Links: [] } }]);
 

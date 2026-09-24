@@ -202,13 +202,10 @@ live("live journey against the fixture account", () => {
     );
     assert.equal(readBack.Id, invoice.Id);
 
-    // What a just-issued invoice actually publishes, observed on 2026-09-24: `insite-charge` and
-    // `insite-collection-invoice`, and **no `insite-related-invoice`** -- the PDF link is not there
-    // the moment billing returns. So the lane asserts what the API guarantees (a due invoice is
-    // payable, and every link it publishes carries an href or an encrypted query) and reports the
-    // PDF link rather than requiring it. `get_invoice` already answers its absence by saying so;
-    // what it must never do is rebuild the URL from the invoice number, and that is asserted
-    // offline, where a response with and without the link can both be replayed.
+    // The PDF link, under either spelling. The contract documents `insite-related-invoice`; this
+    // account answered `related-invoice` on 2026-09-24, on an invoice whose other links carried
+    // their documented names. `get_invoice` accepts both, and this is what keeps that honest: the
+    // day the API drops one of them is the day this fails instead of silently handing back no PDF.
     const links = readBack.Links ?? [];
     const rels = links.map((link) => link.rel);
 
@@ -219,14 +216,11 @@ live("live journey against the fixture account", () => {
         `In-Site installation URL configured -- setup item 6 of Spec-test-account.md.`,
     );
 
-    if (!rels.includes("insite-related-invoice")) {
-      process.stderr.write(
-        `live: invoice ${invoice.Id} publishes ${rels.join(", ")} but no insite-related-invoice ` +
-          `yet. The PDF link is not available the moment billing returns; get_invoice reports its ` +
-          `absence rather than rebuilding the URL.
-`,
-      );
-    }
+    assert.ok(
+      rels.includes("insite-related-invoice") || rels.includes("related-invoice"),
+      `the invoice publishes ${rels.join(", ")} and no PDF link under either spelling, so ` +
+        `get_invoice cannot hand one over -- and must never rebuild it from the invoice number`,
+    );
 
     await client.post("/v1/Subscription/{IdSubscription}/Termination", {
       query: { IdSubscription: subscription.Id, Immediate: true },
@@ -378,6 +372,14 @@ live("live In-Site journey, through the tools", () => {
         ReferenceSegment: configuration.segmentRef,
         Email: `${RUN}-insite@example.test`,
       },
+    });
+    // Starting a subscription on a priced offer needs payment settings, exactly as billing does:
+    // without them `POST /v1/Subscription` with `TryStart` answers `403
+    // Error.Customer.PaymentSettings.Missing`. `ExternalBank` is the type the API accepts with no
+    // gateway behind it.
+    await client.post("/v1/CustomerSettingsPayment", {
+      query: { ReferenceCustomer: customerRef },
+      body: { TypePayment: "ExternalBank" },
     });
     await client.post("/v1/Subscription", {
       query: { TryStart: true },

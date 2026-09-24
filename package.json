@@ -1,6 +1,6 @@
 {
   "name": "@proabono/mcp-installation",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "mcpName": "com.proabono/mcp-installation",
   "description": "Local MCP server that installs ProAbono into a website, from the developer IDE: hosted pages, rights synchronization, catalogue introspection, customers, subscriptions, usage and invoicing.",
   "license": "MIT",

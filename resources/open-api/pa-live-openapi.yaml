@@ -2895,7 +2895,15 @@ components:
       properties:
         rel:
           type: string
-          description: Relationship type (e.g. "self", "insite-home")
+          description: |
+            Relationship type (e.g. "self", "insite-home").
+
+            **The invoice PDF is published under two spellings.** The examples in this contract use
+            `insite-related-invoice`; a live account was observed on 2026-09-24 answering
+            `related-invoice` on an invoice whose other links (`insite-charge`,
+            `insite-collection-invoice`) carried their documented names. A consumer reading the PDF
+            link must accept both until the two agree. Which one is canonical is unresolved, and is
+            not settled here by picking one.
         href:
           type: string
           description: URL path to the related resource

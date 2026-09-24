@@ -20,8 +20,17 @@ import { z } from "zod";
 import { failure, json, type ToolContext, type ToolResult } from "./context.js";
 import { guard } from "./guard.js";
 
-/** The `rel` the invoice PDF is published under. Never rebuild the URL from the invoice number. */
-const PDF_REL = "insite-related-invoice";
+/**
+ * The `rel`s the invoice PDF is published under. Never rebuild the URL from the invoice number.
+ *
+ * Two spellings, and that is not defensive programming. The contract documents
+ * `insite-related-invoice`, and a live account answered `related-invoice` on 2026-09-24 -- on an
+ * invoice that carried `insite-charge` and `insite-collection-invoice` under their documented
+ * names. Looking for the documented spelling alone meant never finding the PDF of a real invoice
+ * and reporting "this document publishes no PDF link" about one that does. Both are accepted, the
+ * documented one first, until the contract and the API agree.
+ */
+const PDF_RELS = ["insite-related-invoice", "related-invoice"] as const;
 
 interface Link {
   readonly rel?: string;
@@ -39,8 +48,11 @@ interface InvoiceDocument {
 
 /** The PDF href, or undefined when the document does not publish one. Never fabricated. */
 function pdfUrl(document: InvoiceDocument): string | undefined {
-  const link = (document.Links ?? []).find((candidate) => candidate.rel === PDF_REL);
-  return typeof link?.href === "string" ? link.href : undefined;
+  for (const rel of PDF_RELS) {
+    const link = (document.Links ?? []).find((candidate) => candidate.rel === rel);
+    if (typeof link?.href === "string") return link.href;
+  }
+  return undefined;
 }
 
 /** A credit note is an invoice carrying `TypeCredit`; its absence is what identifies a debit one. */
@@ -54,12 +66,10 @@ function describeDocument(document: InvoiceDocument): string {
 }
 
 const noPdfNote =
-  `This document publishes no "${PDF_REL}" link, so it has no PDF URL. A Draft invoice has none ` +
-  `yet -- and neither does a freshly issued one: an invoice read back immediately after billing ` +
-  `publishes "insite-charge" and "insite-collection-invoice" and not this rel, so an absent PDF ` +
-  `link right after issuing is normal and not a failure. Read the document again later. Do not ` +
-  `build a URL from the invoice number: the real one carries an encrypted query and cannot be ` +
-  `reconstructed.`;
+  `This document publishes no PDF link -- neither "${PDF_RELS[0]}", which the contract documents, ` +
+  `nor "${PDF_RELS[1]}", which a live account was observed to answer with. A Draft invoice has ` +
+  `none yet. Do not build a URL from the invoice number: the real one carries an encrypted query ` +
+  `and cannot be reconstructed.`;
 
 export function registerInvoicingTools(server: McpServer, context: ToolContext): void {
   const { client } = context;
