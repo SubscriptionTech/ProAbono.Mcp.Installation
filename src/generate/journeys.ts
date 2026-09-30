@@ -113,7 +113,7 @@ export const JOURNEYS: readonly Journey[] = [
     key: "subscription_funnel",
     title: "Sign up a new customer and take their first subscription",
     summary:
-      "The subscription journey of spec §3, end to end. Which of the three shapes fits is a " +
+      "The subscription journey, end to end. Which of the three shapes fits is a " +
       "product decision, not a technical one: a free trial needs no hosted page at sign-up, a " +
       "pricing-table-first funnel carries the chosen offer through sign-up, and a sign-up-first " +
       "funnel shows the table to an identified customer.",
@@ -159,7 +159,7 @@ export const JOURNEYS: readonly Journey[] = [
     key: "portal_lifecycle",
     title: "Let an existing customer manage their subscription",
     summary:
-      "The portal journey of spec §3: upgrade, downgrade, payment method, invoices, dunning. Most " +
+      "The portal journey: upgrade, downgrade, payment method, invoices, dunning. Most " +
       "of it is the Customer Portal's own buttons, which are the best-tested path — reach for a " +
       "dedicated workflow only where the application needs its own entry point.",
     steps: [

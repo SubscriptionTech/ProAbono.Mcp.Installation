@@ -53,7 +53,7 @@ jobs:
       - run: npm test
 
   # The same `npm test` as `build`, but with the fixture account in the environment, so the live
-  # lanes run instead of skipping themselves. See Spec-test-account.md in the internal workspace
+  # lanes run instead of skipping themselves. See specs/testing.md in the internal workspace
   # repository for the account this expects and for the Segment it writes to.
   #
   # The guard is what keeps the secrets out of untrusted hands: never on a pull request, and the

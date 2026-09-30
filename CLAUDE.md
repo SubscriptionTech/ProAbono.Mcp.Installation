@@ -28,7 +28,7 @@ If the two disagree, or if something needed is in neither, ask the user instead 
 
 ## Specs
 
-**This repository holds no specification.** The product specs, the build plans and the backlog are
+**This repository holds no specification.** The product specs and the backlog are
 private, in `specs/` of the parent repository named above. Read them there before changing what a
 tool does, what it is named, or what it returns — the spec is the source of truth about the product,
 and this repository is its implementation. A session opened on this folder alone cannot see them:

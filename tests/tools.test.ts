@@ -84,7 +84,7 @@ const REGISTERED = [
  */
 const RETIRED = ["create_customer", "update_customer", "change_subscription"];
 
-/** Every tool that writes. Each must open its description with WRITE, which is how §8 routes. */
+/** Every tool that writes. Each must open its description with WRITE, which is how product spec §8 routes. */
 const WRITES = [
   "create_update_customer",
   "update_billing_address",
@@ -148,7 +148,7 @@ describe("the exposed tool surface", () => {
     for (const retired of RETIRED) {
       assert.ok(
         !names.includes(retired),
-        `${retired} was retired into the tools of spec §4 and must not be registered. ` +
+        `${retired} was retired into the tools of the tools spec and must not be registered. ` +
           `Reinstating it restores a surface the release notes say is gone.`,
       );
     }
@@ -211,7 +211,7 @@ describe("the exposed tool surface", () => {
     for (const tool of (await client.listTools()).tools) {
       assert.ok(
         (tool.description ?? "").length > 80,
-        `${tool.name} has no description to route on; §8 makes descriptions the routing mechanism`,
+        `${tool.name} has no description to route on; product spec §5 makes descriptions the routing mechanism`,
       );
     }
   });

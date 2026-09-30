@@ -2,7 +2,7 @@
  * The live lanes: the writes of this release exercised against a real ProAbono account.
  *
  * They run only when the seven variables are present in the environment, and they expect the
- * fixture account described in Spec-test-account.md, in the internal specs repository: a Business
+ * fixture account described in specs/testing.md, in the internal specs repository: a Business
  * used for nothing else, a Segment pool, three Features (one per type), and at least one Offer
  * carrying a Feature.
  *
@@ -74,7 +74,7 @@ live("live journey against the fixture account", () => {
     assert.ok(
       usable?.ReferenceOffer !== undefined,
       "The fixture account must expose at least one Offer carrying at least one Feature. " +
-        "Offers and Features are authored in the BackOffice; see Spec-test-account.md in the internal specs.",
+        "Offers and Features are authored in the BackOffice; see specs/testing.md in the internal specs.",
     );
     offerRef = usable.ReferenceOffer;
 
@@ -213,7 +213,7 @@ live("live journey against the fixture account", () => {
       rels.includes("insite-charge"),
       `a due invoice must publish insite-charge so it can be paid; this one publishes ` +
         `${rels.join(", ") || "no link at all"}. No insite-* link at all means the Segment has no ` +
-        `In-Site installation URL configured -- setup item 6 of Spec-test-account.md.`,
+        `In-Site installation URL configured -- setup item 6 of specs/testing.md.`,
     );
 
     assert.ok(
@@ -413,11 +413,11 @@ live("live In-Site journey, through the tools", () => {
 
     if (insite.length === 0) {
       // The fixture, not the code: every insite-* link is built on the Segment's In-Site
-      // installation URL, which is a BackOffice setting (Spec-test-account.md, setup item 6).
+      // installation URL, which is a BackOffice setting (specs/testing.md, setup item 6).
       process.stderr.write(
         `live: customer ${customerRef} carries no insite-* link (rels: ${rels.join(", ") || "none"}). ` +
           `The Segment has no In-Site installation URL configured, so step 2 cannot be exercised ` +
-          `here -- see setup item 6 of Spec-test-account.md.\n`,
+          `here -- see setup item 6 of specs/testing.md.\n`,
       );
       return;
     }

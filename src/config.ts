@@ -2,10 +2,10 @@
  * The server's configuration, read from the environment and from nothing else.
  *
  * The seven variables are the vocabulary the ProAbono documentation already uses, so the
- * documentation, this server and the code it generates all name the same things (spec §6).
+ * documentation, this server and the code it generates all name the same things (product spec §7).
  *
  * No value read here is ever logged, returned by a tool, put in an error message, or inlined
- * in generated code (spec §8). Only the *names* leave this module.
+ * in generated code (product spec §8). Only the *names* leave this module.
  */
 
 export type ConfigurationVariableName =
@@ -19,7 +19,7 @@ export type ConfigurationVariableName =
 
 interface ConfigurationVariable {
   readonly name: ConfigurationVariableName;
-  /** What the variable holds, in the words of spec §6. Safe to show: it describes, never reveals. */
+  /** What the variable holds, in the words of product spec §7. Safe to show: it describes, never reveals. */
   readonly holds: string;
 }
 
@@ -63,7 +63,7 @@ function read(env: NodeJS.ProcessEnv, name: ConfigurationVariableName): string |
  *
  * It validates shape only. It never infers, checks or announces which ProAbono account —
  * or which environment — the credentials open: the credentials are the only boundary
- * (spec §6, invariant 1).
+ * (product spec §7, invariant 1).
  */
 export function loadConfiguration(env: NodeJS.ProcessEnv = process.env): ProAbonoConfiguration {
   const missing = CONFIGURATION_VARIABLES.filter(({ name }) => read(env, name) === undefined);
