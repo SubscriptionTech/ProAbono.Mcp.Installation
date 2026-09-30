@@ -94,6 +94,15 @@ async function proabono(method, path, body) {
 > pricing table, a workflow — is opened with the public `business_id` plus an encrypted `query` and
 > a per-customer `hash`. See `in-site-installation.md`.
 
+## All seven values on one page
+
+The BackOffice also gathers the whole configuration of an integration on one page, *Integration →
+MCP*: the endpoint, the business identifier, the Segment reference, the Agent key, the API key, the
+portal secret and the webhook secret — the seven values read from `PROABONO_API_BASE`,
+`PROABONO_BUSINESS_ID`, `PROABONO_SEGMENT_REF`, `PROABONO_AGENT_KEY`, `PROABONO_API_KEY`,
+`PROABONO_PORTAL_SECRET` and `PROABONO_WEBHOOK_SECRET`. The pages above remain where each one is
+managed.
+
 ## Technical references
 
 ProAbono objects are addressed by a **technical reference**: a UTF-8 string you choose, so your

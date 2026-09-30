@@ -19,6 +19,27 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
   The subscription and portal journeys said "of spec §3", pointing at a specification no one
   installing the package can read. The text is otherwise unchanged; no tool, input or output
   changes.
+- **`verify_insite_installation` is now a write tool.** Before exercising steps 2 and 3 it makes
+  sure the customer it verifies against exists: the `customer_ref` you pass is upserted with its
+  reference and Segment only — created if missing, left unchanged if it exists — and without one a
+  new customer is created under a generated `mcp-verify-` reference, which the output names. Steps 2
+  and 3 are therefore always exercised, where they used to be reported as not run. Its description
+  now opens with `WRITE`.
+- **The README is reorganised.** *Install* comes right after the introduction; the tools are listed
+  in one table per domain with a *Writes* column; new *Example prompts* and *Troubleshooting*
+  sections; npm and licence badges; links to the ProAbono documentation, the API reference and
+  account sign-up.
+
+### Added
+
+- **The documentation says where all seven configuration values are.** The API basics now name the
+  BackOffice page that gathers them, *Integration → MCP*.
+
+### Fixed
+
+- **`SECURITY.md` no longer says the anonymization endpoint is not exposed.** `anonymize_customer`
+  is exposed, as the one tool whose effect cannot be undone; the policy now says so, and its scope
+  no longer refers to an endpoint list the README does not carry.
 
 ## [0.3.1]
 

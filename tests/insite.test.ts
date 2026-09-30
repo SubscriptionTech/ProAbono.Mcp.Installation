@@ -652,9 +652,32 @@ describe("verify_insite_installation", () => {
     assert.match(answer, /No source file was read at all/);
   });
 
-  it("does not call step 2 or 3 verified when no customer was given", async () => {
-    const root = project("unverified");
-    const { client } = await connect([{ status: 204 }]);
+  // Its one write. The upsert must carry the reference and the Segment and nothing else: a name or
+  // an email sent along would overwrite what the customer set on the hosted pages.
+  it("upserts the customer it is given with its reference and Segment only", async () => {
+    const root = project("upsert-given");
+    const { client, recorder } = await connect([{ body: {} }, { status: 204 }]);
+
+    const answer = textOf(
+      await client.callTool({
+        name: "verify_insite_installation",
+        arguments: { customer_ref: "cust-1", project_root: root },
+      }),
+    );
+
+    const upsert = recorder.requests[0]!;
+    assert.equal(upsert.method.toUpperCase(), "POST");
+    assert.equal(upsert.url.pathname, "/v1/Customer");
+    assert.deepEqual(upsert.body, {
+      ReferenceCustomer: "cust-1",
+      ReferenceSegment: TEST_CONFIGURATION.segmentRef,
+    });
+    assert.match(answer, /\*\*Customer ensured\.\*\*/);
+  });
+
+  it("creates a customer under a generated reference when none is given, and names it", async () => {
+    const root = project("create-generated");
+    const { client, recorder } = await connect([{ body: {} }, { status: 204 }]);
 
     const answer = textOf(
       await client.callTool({
@@ -663,14 +686,20 @@ describe("verify_insite_installation", () => {
       }),
     );
 
-    assert.match(answer, /\*\*Not run\.\*\*/);
-    assert.match(answer, /unverified.{0,30}not passing/s);
+    const upsert = recorder.requests[0]!;
+    assert.equal(upsert.method.toUpperCase(), "POST");
+    const body = upsert.body as { ReferenceCustomer: string; ReferenceSegment: string };
+    assert.match(body.ReferenceCustomer, /^mcp-verify-[0-9a-f]{8}$/);
+    assert.deepEqual(Object.keys(body).sort(), ["ReferenceCustomer", "ReferenceSegment"]);
+    assert.match(answer, /\*\*Customer created\.\*\*/);
+    assert.ok(answer.includes(body.ReferenceCustomer), "the output does not name the customer it created");
   });
 
   it("diagnoses an empty Usages answer instead of reporting no rights", async () => {
     const root = project("empty-rights");
     const { client } = await connect([
-      // 1. the customer, 2. its Usages (empty), 3. its subscriptions (empty)
+      // 1. the upsert, 2. the customer, 3. its Usages (empty), 4. its subscriptions (empty)
+      { body: {} },
       { body: { Id: 1, ReferenceCustomer: "cust-1", Links: [{ rel: "insite-home", href: "https://x" }] } },
       { status: 204 },
       { status: 204 },
@@ -717,9 +746,12 @@ describe("the defects a review found", () => {
     const root = project("customer-404");
     writeFileSync(join(root, "app.js"), "// nothing interesting\n", "utf8");
 
-    // The API answers 404, which the client raises. Losing the whole report to it would throw
-    // away everything this tool is run for.
-    const { client } = await connect([{ status: 404, body: { Code: "Error.Customer.NotFound" } }]);
+    // The upsert goes through, then the read answers 404, which the client raises. Losing the
+    // whole report to it would throw away everything this tool is run for.
+    const { client } = await connect([
+      { body: {} },
+      { status: 404, body: { Code: "Error.Customer.NotFound" } },
+    ]);
 
     const answer = textOf(
       await client.callTool({
@@ -856,6 +888,7 @@ describe("the defects a review found", () => {
   it("counts the queries it reports among the insite links it reports them against", async () => {
     const root = project("query-count");
     const { client } = await connect([
+      { body: {} },
       {
         body: {
           Id: 7,

@@ -19,6 +19,7 @@
  *    back. They are **reported from the installation state**, never verified, and the difference is
  *    stated every time.
  */
+import { randomUUID } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { extname, join, relative } from "node:path";
 
@@ -345,10 +346,13 @@ export function registerVerifyTools(server: McpServer, context: ToolContext): vo
   server.registerTool(
     "verify_insite_installation",
     {
-      title: "Verify the In-Site installation, and run the go-live checklist",
+      title: "Verify the In-Site installation, and run the go-live checklist (write)",
       description:
-        "Checks an In-Site installation before it ships. It exercises steps 2 and 3 against the " +
-        "account for real -- reads a customer, confirms an object comes back carrying the " +
+        "WRITE. Checks an In-Site installation before it ships. It exercises steps 2 and 3 against " +
+        "the account for real. Its one write makes sure the customer it verifies against exists: " +
+        "the customer_ref given is upserted with its reference and Segment only -- created if " +
+        "missing, left unchanged if it exists -- and without one a new customer is created under a " +
+        "generated mcp-verify- reference. It then confirms an object comes back carrying the " +
         "insite-* workflow query, and reads the Usage API for that customer, diagnosing an empty " +
         "answer instead of calling it 'no rights'. It checks the developer's own files statically " +
         "against the rules of the go-live checklist: no secret inlined, no customer reference from " +
@@ -362,9 +366,10 @@ export function registerVerifyTools(server: McpServer, context: ToolContext): vo
           .string()
           .optional()
           .describe(
-            "A customer to exercise the wiring against — ideally one that has subscribed. " +
-              "Without it, steps 2 and 3 cannot be verified end to end and are reported as " +
-              "unverified rather than as passing.",
+            "A customer to exercise the wiring against — ideally one that has subscribed, since " +
+              "only a subscribed customer has rights to read. It is upserted with its reference " +
+              "and Segment only, so an existing customer is left unchanged. Without it, a new " +
+              "customer is created under a generated `mcp-verify-` reference.",
           ),
         offer_ref: z
           .string()
@@ -394,28 +399,36 @@ export function registerVerifyTools(server: McpServer, context: ToolContext): vo
         // ── Verified against the account ────────────────────────────────────────────────
         sections.push("## 1. Verified against the account", "");
 
-        if (customer_ref === undefined) {
+        const customerRef = customer_ref ?? `mcp-verify-${randomUUID().slice(0, 8)}`;
+
+        // A failure here is a *finding about the installation*, not a failure of the
+        // verification: letting it propagate would throw away the static checks, the pending list
+        // and the whole checklist -- everything this tool is run for.
+        try {
+          // The one write. An upsert carrying the reference and the Segment only: it creates the
+          // customer when missing and, since only the fields passed are written, changes nothing on
+          // one that exists.
+          await client.post("/v1/Customer", {
+            body: { ReferenceCustomer: customerRef, ReferenceSegment: configuration.segmentRef },
+          });
           sections.push(
-            "**Not run.** No `customer_ref` was given, so nothing was exercised end to end. Steps " +
-              "2 and 3 are **unverified** — not passing. Pass a customer who has subscribed.",
+            customer_ref === undefined
+              ? `**Customer created.** No \`customer_ref\` was given, so a new customer, ` +
+                  `\`${customerRef}\`, was created in Segment \`${configuration.segmentRef}\` to ` +
+                  `verify against. It has no subscription, so step 3 can only report why it has ` +
+                  `no Usages yet; pass a customer who has subscribed to see rights come back.`
+              : `**Customer ensured.** \`${customerRef}\` was upserted with its reference and ` +
+                  `Segment only: created if it was missing, unchanged if it existed.`,
+            "",
           );
-        } else {
-          // A failure here is a *finding about the installation*, not a failure of the
-          // verification: the API answers 404 for a customer that does not exist, and letting
-          // that propagate would throw away the static checks, the pending list and the whole
-          // checklist -- everything this tool is run for.
-          try {
-            sections.push(...(await exerciseSteps(customer_ref, offer_ref)));
-          } catch (error) {
-            sections.push(
-              `**Steps 2 and 3 — unverified.** Reading \`${customer_ref}\` from the account ` +
-                `failed: ${error instanceof ProAbonoApiError ? error.describe() : String(error)}.`,
-              "",
-              "A `404` here means no customer carries that reference in Segment " +
-                `\`${configuration.segmentRef}\` — provision it first, since steps 2 and 3 both ` +
-                `need the customer to exist. Everything below was checked all the same.`,
-            );
-          }
+          sections.push(...(await exerciseSteps(customerRef, offer_ref)));
+        } catch (error) {
+          sections.push(
+            `**Steps 2 and 3 — unverified.** Exercising \`${customerRef}\` against the account ` +
+              `failed: ${error instanceof ProAbonoApiError ? error.describe() : String(error)}.`,
+            "",
+            "Everything below was checked all the same.",
+          );
         }
 
         // ── Checked statically ──────────────────────────────────────────────────────────

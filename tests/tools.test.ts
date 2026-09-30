@@ -102,6 +102,7 @@ const WRITES = [
   "push_usage_enabling",
   "create_balance_line",
   "bill_customer",
+  "verify_insite_installation",
 ];
 
 async function connect(responses: readonly { status?: number; body?: unknown }[]) {

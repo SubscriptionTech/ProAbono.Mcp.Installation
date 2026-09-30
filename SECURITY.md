@@ -24,9 +24,12 @@ boundary of its own: the credentials in its environment are the boundary. It rea
 variables, and never logs, returns, embeds in an error message or inlines into generated code any
 value it reads. Generated code references the variable names.
 
-The server exposes no destructive operation. ProAbono's anonymization, invalidation, suspension and
-link-revocation endpoints exist and are deliberately not exposed, in any account.
+No tool destroys billing history: deleting a customer, a subscription or an invoice is out of scope
+in any account, and ProAbono's customer-suspension, invalidation and link-revocation endpoints exist
+and are deliberately not exposed. `anonymize_customer` is the one tool whose effect cannot be undone:
+it erases a customer's personal data and keeps the invoices and the subscription history, which is
+what a GDPR erasure asks of a billing system.
 
-A finding that a tool leaks a secret value, that generated code embeds one, or that a tool reaches
-an endpoint outside the list in the README is in scope. So is a supply-chain finding about the
+A finding that a tool leaks a secret value, that generated code embeds one, or that a tool does
+something its line in the README's *Tools* section does not say is in scope. So is a supply-chain finding about the
 published tarball. A misconfigured ProAbono account of your own is not.
