@@ -36,9 +36,9 @@ If the two disagree, or if what you need is in neither, open an issue rather tha
 
 ## Refreshing the API contract
 
-`resources/open-api/pa-live-openapi.yaml` is a **copy**, and it is renamed on the way in: upstream
-the file is `open-api/pa-live-openapi-3.0.3.yaml`, named after the OpenAPI version it is written
-against, and the refresh copies it here under the version-free name. It is authored in the private
+`resources/open-api/pa-live-openapi.yaml` is a **copy** of the API Live OpenAPI spec, and it is
+renamed on the way in: upstream each version of the spec is a file of its own, named after that
+version, and the refresh copies the highest one here under the version-free name. It is authored in the private
 `SubscriptionTech/Claude.SharedApi.ProAbonoLive` repository, which is the source of truth — an edit
 made directly here is overwritten by the next refresh.
 

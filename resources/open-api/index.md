@@ -11,10 +11,10 @@ It is a **copy**. The contract is authored and maintained in
 alongside the resource documentation it is kept in sync with. That repository is the source of
 truth; this file is what the build reads.
 
-It is **renamed on the way in**: upstream the file is `open-api/pa-live-openapi-3.0.3.yaml`, named
-after the OpenAPI version it is written against, and the refresh copies it here as
-`pa-live-openapi.yaml`. The version belongs in the document, not in the file name, so an upstream
-bump to a later OpenAPI version leaves every path in this repository untouched.
+It is **renamed on the way in**: upstream each version of the API Live OpenAPI spec is a file of its
+own, named after that version (`info.version`), and the older ones stay next to it. The refresh
+finds the highest version by the shape of its name, never by a fixed name, and copies it here as
+`pa-live-openapi.yaml`, so a new version upstream leaves every path in this repository untouched.
 
 That repository is private, and **this one does not depend on it**: the copy is committed here and
 the build vendors it into `dist/resources/openapi.json`, so a clone builds with no credential and CI
