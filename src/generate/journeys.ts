@@ -213,10 +213,10 @@ export const JOURNEYS: readonly Journey[] = [
       },
       {
         title: "Write it back",
-        tool: "add_feature_consumption",
+        tool: "push_usage_increment",
         what:
-          "`add_feature_consumption` for `Consumption`, `set_feature_current_quantity` for " +
-          "`Limitation`, `set_feature_enabled` for `OnOff`. `DateStamp` is mandatory and in UTC; " +
+          "`push_usage_increment` for `Consumption`, `push_usage_quantity` for " +
+          "`Limitation`, `push_usage_enabling` for `OnOff`. `DateStamp` is mandatory and in UTC; " +
           "a future date is unsupported. A repeated `Increment` double-counts — an absolute write " +
           "does not, which is why the `Limitation` write never offers the unsafe mode.",
       },

@@ -145,9 +145,9 @@ Point your keys at a **Sandbox** account to run this. Step 4 writes nothing, but
 **Usage and rights**
 - `get_usages` — a customer's rights and consumption.
 - `quote_usage_change` — price an intended change, and check it is allowed, before applying it.
-- `add_feature_consumption` — report consumption of a `Consumption` feature.
-- `set_feature_current_quantity` — set the provisioned quantity of a `Limitation` feature.
-- `set_feature_enabled` — switch an `OnOff` feature.
+- `push_usage_increment` — report consumption of a `Consumption` feature.
+- `push_usage_quantity` — set the provisioned quantity of a `Limitation` feature.
+- `push_usage_enabling` — switch an `OnOff` feature.
 
 **Invoicing and balance**
 - `get_invoice` — a debit invoice, with its PDF URL.

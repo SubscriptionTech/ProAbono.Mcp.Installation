@@ -31,7 +31,6 @@ process.chdir(mkdtempSync(join(tmpdir(), "proabono-tools-")));
 
 /** Every tool this release registers. The list is the surface, and the surface is the contract. */
 const REGISTERED = [
-  "add_feature_consumption",
   "anonymize_customer",
   "bill_customer",
   "create_balance_line",
@@ -59,11 +58,12 @@ const REGISTERED = [
   "list_offers_for_customer",
   "list_subscriptions",
   "plan_integration",
+  "push_usage_enabling",
+  "push_usage_increment",
+  "push_usage_quantity",
   "quote_usage_change",
   "scaffold_notification_endpoint",
   "search_documentation",
-  "set_feature_current_quantity",
-  "set_feature_enabled",
   "set_invoice_note",
   "set_next_billing_date",
   "set_payment_method",
@@ -97,9 +97,9 @@ const WRITES = [
   "upgrade_subscription",
   "suspend_subscription",
   "terminate_subscription",
-  "add_feature_consumption",
-  "set_feature_current_quantity",
-  "set_feature_enabled",
+  "push_usage_increment",
+  "push_usage_quantity",
+  "push_usage_enabling",
   "create_balance_line",
   "bill_customer",
 ];
@@ -245,7 +245,7 @@ describe("the exposed tool surface", () => {
     // Backticked snake_case words that read as a tool name, so `customer_ref` and `pa_query` are
     // not mistaken for one.
     const verbs =
-      /^(add|anonymize|bill|change|create|generate|get|install|link|list|plan|quote|scaffold|search|set|start|suspend|sync|terminate|update|upgrade|verify)_/;
+      /^(add|anonymize|bill|change|create|generate|get|install|link|list|plan|push|quote|scaffold|search|set|start|suspend|sync|terminate|update|upgrade|verify)_/;
     const ghosts = [...readme.matchAll(/`([a-z]+(?:_[a-z]+)+)`/g)]
       .map((match) => match[1]!)
       .filter((name) => verbs.test(name) && !registered.includes(name));
@@ -481,19 +481,19 @@ describe("the Usage writes", () => {
       forbidden: readonly string[];
     }[] = [
       {
-        name: "add_feature_consumption",
+        name: "push_usage_increment",
         arguments: { customer_ref: "cust-1", feature_ref: "feat-sms", increment: 57 },
         expected: "Increment",
         forbidden: ["QuantityCurrent", "IsEnabled"],
       },
       {
-        name: "set_feature_current_quantity",
+        name: "push_usage_quantity",
         arguments: { customer_ref: "cust-1", feature_ref: "feat-users", quantity_current: 17 },
         expected: "QuantityCurrent",
         forbidden: ["Increment", "IsEnabled"],
       },
       {
-        name: "set_feature_enabled",
+        name: "push_usage_enabling",
         arguments: { customer_ref: "cust-1", feature_ref: "feat-mod", is_enabled: true },
         expected: "IsEnabled",
         forbidden: ["Increment", "QuantityCurrent"],
@@ -520,7 +520,7 @@ describe("the Usage writes", () => {
     const { client, recorder } = await connect([{ body: {} }]);
 
     await client.callTool({
-      name: "add_feature_consumption",
+      name: "push_usage_increment",
       arguments: { customer_ref: "cust-1", feature_ref: "feat-sms", increment: 1 },
     });
 
@@ -534,7 +534,7 @@ describe("the Usage writes", () => {
     const tomorrow = new Date(Date.now() + 86_400_000).toISOString();
 
     const result = await client.callTool({
-      name: "add_feature_consumption",
+      name: "push_usage_increment",
       arguments: { customer_ref: "cust-1", feature_ref: "feat-sms", increment: 1, date_stamp: tomorrow },
     });
 
@@ -547,10 +547,10 @@ describe("the Usage writes", () => {
     const { client } = await connect([{ body: {} }]);
     const tools = (await client.listTools()).tools;
 
-    const consumption = tools.find((tool) => tool.name === "add_feature_consumption")!;
+    const consumption = tools.find((tool) => tool.name === "push_usage_increment")!;
     assert.match(consumption.description ?? "", /double-count/i);
 
-    const limitation = tools.find((tool) => tool.name === "set_feature_current_quantity")!;
+    const limitation = tools.find((tool) => tool.name === "push_usage_quantity")!;
     assert.match(limitation.description ?? "", /provisioned/i);
     assert.match(limitation.description ?? "", /twice is harmless|retry/i);
   });
@@ -582,7 +582,7 @@ describe("the Usage writes", () => {
     for (const [code, expected] of codes) {
       const { client } = await connect([{ status: 400, body: { Code: code, Message: code } }]);
       const result = await client.callTool({
-        name: "add_feature_consumption",
+        name: "push_usage_increment",
         arguments: { customer_ref: "cust-1", feature_ref: "feat-sms", increment: 1 },
       });
 
@@ -892,9 +892,9 @@ describe("the generator tools", () => {
     );
 
     assertNoSecret(answer);
-    assert.match(answer, /feat-mod.*set_feature_enabled/s);
-    assert.match(answer, /feat-users.*set_feature_current_quantity/s);
-    assert.match(answer, /feat-sms.*add_feature_consumption/s);
+    assert.match(answer, /feat-mod.*push_usage_enabling/s);
+    assert.match(answer, /feat-users.*push_usage_quantity/s);
+    assert.match(answer, /feat-sms.*push_usage_increment/s);
   });
 
   // The rights module and the gate both call functions the project owns and this code does not

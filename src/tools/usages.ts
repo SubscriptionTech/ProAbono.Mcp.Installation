@@ -122,8 +122,8 @@ export function registerUsageTools(server: McpServer, context: ToolContext): voi
       description:
         "Prices an intended Usage change without applying it, and checks that it is allowed: what " +
         "the customer would be charged now, and, with next_term, what their recurring cost would " +
-        "become. Read-only -- nothing is written. Call it before add_feature_consumption, " +
-        "set_feature_current_quantity or set_feature_enabled whenever the change is billable, and " +
+        "become. Read-only -- nothing is written. Call it before push_usage_increment, " +
+        "push_usage_quantity or push_usage_enabling whenever the change is billable, and " +
         "show the amount to the end customer for confirmation before the write. Pass exactly one " +
         "of increment, quantity_current or is_enabled, matching the Feature's type.",
       inputSchema: {
@@ -186,15 +186,15 @@ export function registerUsageTools(server: McpServer, context: ToolContext): voi
   );
 
   server.registerTool(
-    "add_feature_consumption",
+    "push_usage_increment",
     {
       title: "Report consumption of a metered Feature (write)",
       description:
         "WRITE. Adds an increment to the current quantity of a Consumption Feature of a customer -- " +
         "the metered kind: messages sent, API calls made, gigabytes stored. Report what was just " +
         "consumed, not a running total: the value is added to what ProAbono already holds. " +
-        "Consumption Features only; use set_feature_current_quantity for a Limitation Feature and " +
-        "set_feature_enabled for an OnOff one. A repeated call double-counts -- there is no absolute " +
+        "Consumption Features only; use push_usage_quantity for a Limitation Feature and " +
+        "push_usage_enabling for an OnOff one. A repeated call double-counts -- there is no absolute " +
         "mode to fall back on for a metered event, so the caller is responsible for not sending the " +
         "same consumption twice, including on a retry after a timeout. Quote it first with " +
         "quote_usage_change when it is billable.",
@@ -231,7 +231,7 @@ export function registerUsageTools(server: McpServer, context: ToolContext): voi
   );
 
   server.registerTool(
-    "set_feature_current_quantity",
+    "push_usage_quantity",
     {
       title: "Set the quantity of a Limitation Feature (write)",
       description:
@@ -239,8 +239,8 @@ export function registerUsageTools(server: McpServer, context: ToolContext): voi
         "value -- seats, projects, users. Send the quantity the application has provisioned, the " +
         "seats bought and not the seats occupied: that is what ProAbono bills on. The value is " +
         "absolute, so sending it twice is harmless, which is why this write takes no increment. " +
-        "Limitation Features only; use add_feature_consumption for a metered Feature and " +
-        "set_feature_enabled for an OnOff one. Quote it first with quote_usage_change when it is " +
+        "Limitation Features only; use push_usage_increment for a metered Feature and " +
+        "push_usage_enabling for an OnOff one. Quote it first with quote_usage_change when it is " +
         "billable.",
       inputSchema: {
         customer_ref: customerRef,
@@ -279,13 +279,13 @@ export function registerUsageTools(server: McpServer, context: ToolContext): voi
   );
 
   server.registerTool(
-    "set_feature_enabled",
+    "push_usage_enabling",
     {
       title: "Enable or disable an OnOff Feature (write)",
       description:
         "WRITE. Enables or disables an OnOff Feature in the active subscription of a customer -- an " +
-        "option they switch on or off. OnOff Features only; use add_feature_consumption for a " +
-        "metered Feature and set_feature_current_quantity for a Limitation one. The value is " +
+        "option they switch on or off. OnOff Features only; use push_usage_increment for a " +
+        "metered Feature and push_usage_quantity for a Limitation one. The value is " +
         "absolute, so repeating the call is harmless. Note that what the application must then " +
         "enforce is IsEnabled, not IsIncluded: a Feature included in the offer can still be switched " +
         "off. Quote it first with quote_usage_change when enabling is billable.",

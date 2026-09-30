@@ -9,6 +9,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- **The three Usage writes are renamed.** `add_feature_consumption` is now `push_usage_increment`,
+  `set_feature_current_quantity` is now `push_usage_quantity`, and `set_feature_enabled` is now
+  `push_usage_enabling`. Each writes a customer's Usage, not the Feature, and the names now say
+  so; the suffix names the one mode each sends. Inputs, outputs and behaviour are unchanged. The
+  old names are not registered and not aliased: a prompt, a client auto-approval or a script that
+  calls one of them must use the new name.
 - **Two journey summaries of `plan_integration` no longer cite a section of an internal document.**
   The subscription and portal journeys said "of spec §3", pointing at a specification no one
   installing the package can read. The text is otherwise unchanged; no tool, input or output

@@ -317,11 +317,11 @@ function featureListing(
     const type = feature.TypeFeature ?? "?";
     const write =
       type === "OnOff"
-        ? "`set_feature_enabled`"
+        ? "`push_usage_enabling`"
         : type === "Limitation"
-          ? "`set_feature_current_quantity`"
+          ? "`push_usage_quantity`"
           : type === "Consumption"
-            ? "`add_feature_consumption`"
+            ? "`push_usage_increment`"
             : "no write (informational)";
 
     return (
