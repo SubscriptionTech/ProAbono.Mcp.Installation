@@ -34,6 +34,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - **The documentation says where all seven configuration values are.** The API basics now name the
   BackOffice page that gathers them, *Integration → MCP*.
+- **The API Live contract carries its own version.** Its `info.version` is now `0.1.0`, where it
+  was `v1`. No endpoint, parameter or payload changes.
 
 ### Fixed
 

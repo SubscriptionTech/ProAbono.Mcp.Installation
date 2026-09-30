@@ -4,7 +4,7 @@ info:
   description: >
     Customer-facing API for ProAbono. Allows integrations to manage customers,
     subscriptions, feature usage, invoices, balance lines, and quoting.
-  version: v1
+  version: 0.1.0
 servers:
   - url: https://api-{idBusiness}.proabono.com
     description: Production
