@@ -5,6 +5,17 @@ All notable changes to `@proabono/mcp-installation` are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-09-30
+
+### Changed
+
+- **Released as a minor, because it breaks.** This version ships everything listed under `0.3.2`
+  below, which was never published on its own, and that includes a rename of three tools:
+  `add_feature_consumption`, `set_feature_current_quantity` and `set_feature_enabled` are now
+  `push_usage_increment`, `push_usage_quantity` and `push_usage_enabling`. Below `1.0.0` a break
+  moves the minor, so an install pinned to `^0.3.1` stays on `0.3.1` until you move it here. Read
+  the `0.3.2` section before upgrading.
+
 ## [0.3.2]
 
 ### Changed
@@ -344,6 +355,7 @@ First release.
 - **Server introspection**: `get_server_info`, reporting the version and which environment variables
   are configured, never their values.
 
+[0.4.0]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.3.1...v0.4.0
 [0.3.2]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
 [0.3.1]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
 [0.3.0]: https://github.com/SubscriptionTech/ProAbono.Mcp.Installation/compare/v0.1.0...HEAD
