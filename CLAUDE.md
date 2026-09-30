@@ -12,8 +12,8 @@ this file, which is why the rules below are repeated here rather than referenced
 
 ## Sources of truth
 
-Only two sources are authoritative when building or changing the MCP server. Read them before
-writing code, and never infer ProAbono behaviour from memory, from the web, or from older specs.
+Only two sources are authoritative for ProAbono's own behaviour, which both the specs and this
+repository rest on. Read them before writing code, and never infer ProAbono behaviour from memory, from the web, or from older specs.
 
 1. `resources/open-api/` — the ProAbono API Live contract (`pa-live-openapi.yaml`).
    Authoritative for endpoints, parameters, payloads, response shapes and authentication. It is a
@@ -28,11 +28,36 @@ If the two disagree, or if something needed is in neither, ask the user instead 
 
 ## Specs
 
-**This repository holds no specification.** The product specs and the backlog are
-private, in `specs/` of the parent repository named above. Read them there before changing what a
-tool does, what it is named, or what it returns — the spec is the source of truth about the product,
-and this repository is its implementation. A session opened on this folder alone cannot see them:
-say so rather than reconstructing a contract from the code.
+**This repository is derived from the specs, in a one-way sync.** It holds no specification: the
+product specs and the backlog are private, in `specs/` of the parent repository named above. This
+repository is produced from them, and nothing travels the other way — a request to change this
+repository, outside the two folders below, is a request to change the specs, made there first and then carried here. A spec change
+left uncarried here is work half done.
+
+**Two folders are not produced from the specs**, and a change to them is made at their own source,
+as [Sources of truth](#sources-of-truth) sets out:
+
+- `resources/docs/` — the installation documentation, authored here, with no upstream. A change to
+  it is made here directly.
+- `resources/open-api/` — the copy of the API Live contract, which the build refreshes from its
+  private source. A change to the contract is made there, never in the copy.
+
+**Three kinds of change need no spec change**, because none reaches a developer using the MCP:
+
+- a pure refactor — every tool name, input, output and message stays identical. A refactor that
+  changes an error message is not one.
+- a test change that leaves what the suite asserts as it is — a flaky test fixed, a fixture sped
+  up. `tests/` is not shipped in the package; the specs own what the suite asserts, so an assertion
+  added or removed is a spec change.
+- a change to this `CLAUDE.md` — the Claude rules, which are not shipped. `RELEASING.md` and the
+  issue templates are not covered.
+
+Every other change changes a spec first, a version bump included. Say which exemption applies when
+using one.
+
+A session opened on this folder alone cannot see the specs, so it cannot make a change that starts
+there: it says so, and asks for the change to be made from the parent repository, rather than
+changing the code first or reconstructing a contract from it.
 
 What this repository holds under `resources/` is not a spec: it is the two inputs the build vendors
 into `dist/resources/` — the ProAbono API Live contract and the installation documentation corpus.
